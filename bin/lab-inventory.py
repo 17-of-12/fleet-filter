@@ -17,7 +17,7 @@ ps/images and ss -ltn, nothing is started, stopped or written on the target.
 Design notes
 ------------
 * Read-only. Every remote command is a listing; `sudo -n podman` is used because the victims run
-  rootful, which is a deployment choice recorded in docs/LAB-HOSTS.md.
+  rootful, which is a deployment choice recorded in the lab host inventory.
 * The parsers and the comparison are pure functions over captured text, so the tests exercise the
   real logic against fixtures instead of requiring a lab (rule 17: the fixture is the oracle).
 * `--json` exists so the next command can consume the answer. A human table and a machine document
