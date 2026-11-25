@@ -26,13 +26,16 @@
 # -----
 #   bin/publish-public.sh --worktree ~/src/fleet-filter-public --message "Add CVE-2026-XXXX signature"
 #   bin/publish-public.sh --worktree DIR --message MSG --token-file ~/.config/fleet-filter/token
-#   bin/publish-public.sh --worktree DIR --message MSG --remote /tmp/test.git --no-token
+#   bin/publish-public.sh --worktree DIR --token-file PATH --pr --message MSG   # as a pull request
 #
 # Exit status is 0 when the push succeeded or there was nothing to publish, 1 on any failure.
 
 set -euo pipefail
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Scratch space belongs to the project, not to the shared /tmp: the export carries a full copy of the
+# tree, and the worktree is a git clone. `tmp/` is gitignored, which is the point - neither is source.
+SCRATCH="${REPO_ROOT}/tmp"
 WORKTREE=""
 MESSAGE=""
 REMOTE="https://github.com/17-of-12/fleet-filter.git"
@@ -61,6 +64,12 @@ done
 
 [ -n "$WORKTREE" ] || die "--worktree is required (a persistent clone of the public repository)"
 [ -n "$MESSAGE" ] || die "--message is required: the log should say why this release happened"
+if [ "$VIA_PR" -eq 1 ] && [ -z "$TOKEN_FILE" ]; then
+    # Without a token the branch push cannot happen, and falling through used to reach the legacy
+    # direct push while HEAD was the release branch: a stray branch plus a raw git error from the
+    # ruleset, instead of the one sentence that explains the problem.
+    die "--pr needs --token-file: the branch push and the merge both authenticate with it"
+fi
 
 if [ ! -d "$WORKTREE/.git" ]; then
     note "no clone at $WORKTREE; creating one from $REMOTE"
@@ -69,7 +78,8 @@ fi
 
 # 1. Fresh export. Built every time, so the published tree cannot drift from the private one.
 if [ -z "$EXPORT_DIR" ]; then
-    EXPORT_DIR=$(mktemp -d)
+    mkdir -p "$SCRATCH"
+    EXPORT_DIR=$(mktemp -d "${SCRATCH}/export.XXXXXX")
     trap 'rm -rf "$EXPORT_DIR"' EXIT
     "${REPO_ROOT}/bin/export-public.py" --out "$EXPORT_DIR" --force >/dev/null ||
         die "the exporter refused this tree"

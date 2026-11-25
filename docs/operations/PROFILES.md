@@ -16,7 +16,7 @@ vulnerability is present or absent.**
 
 ## I1 — the seven strategies, now as data
 
-`docs/HANDOFF.md` §12.1 names seven response strategies. `tarpit/profiles/` was an empty directory
+The original design brief names seven response strategies. `tarpit/profiles/` was an empty directory
 with a `.gitkeep`; it now holds the catalogue and the bodies.
 
 | Profile | Handoff name | Body | Media type |

@@ -6,7 +6,7 @@
 # Cell expectations are *derived* from the live map rather than hardcoded, so the test cannot drift
 # from the state it claims to check.
 #
-# IPv6 is out of scope by owner decision 2026-11-14 (see docs/container/canary-build-2026-11-14.md, V6);
+# IPv6 is out of scope by owner decision 2026-11-14 (see docs/handoffs/canary-build-2026-11-14.md, V6);
 # the matrix is IPv4-only and says so in its output rather than leaving a silent gap.
 #
 # Usage: bash test_routing_matrix.sh [host]   (default: run locally, i.e. execute on the target)

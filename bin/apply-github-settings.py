@@ -45,13 +45,12 @@ DESCRIPTION = "Virtual patching and bounded deception for web servers, with an e
 TOPICS = ["security", "waf", "reverse-proxy", "rust", "http2", "incident-response",
           "virtual-patching"]
 
-# Protection is a *ruleset* rather than the classic branch-protection rule, for one reason that
-# matters operationally: a ruleset can name a bypass actor, and the release bot has to publish to
-# main. Classic protection cannot exempt an app, and an app cannot approve its own pull request, so
-# classic protection and automated publishing cannot both be true.
+# Protection is a *ruleset* rather than the classic branch-protection rule, because an app cannot
+# approve its own pull request: required approval and automated publishing cannot both be true.
 #
-# The bypass is a deliberate, recorded exception: humans need a review, the release job does not,
-# because what it publishes is an export of a tree that already passed the same gate.
+# The review gate is therefore a required check (`agent-review`), which any actor can satisfy and
+# which a ruleset can require. There is no bypass actor: the release job earns its merge the same way
+# a human does, so a bad export is stopped by the checks rather than by nobody looking.
 RULESET_NAME = "main protection"
 RULESET = {
     "name": RULESET_NAME,

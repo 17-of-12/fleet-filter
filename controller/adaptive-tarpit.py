@@ -2,7 +2,7 @@
 """
 adaptive-tarpit - quarantine controller for the Fleet-Filter project.
 
-Responsibilities (docs/DETECTION-INPUTS.md section 9, docs/FLEET-STATE.md):
+Responsibilities (docs/design/DETECTION-INPUTS.md section 9, docs/FLEET-STATE.md):
   * own the authoritative per-host claim store (SQLite);
   * consume verdicts (Wazuh AR, fail2ban, CLI claims, fleet sync all land here);
   * render the Apache RewriteMap atomically;
@@ -56,7 +56,7 @@ BYPASS_SCHEMA = 1
 # Spool for asynchronous claim submitters - the tarpit responder today, the Stage 2 gateway
 # per Bundle R. Producers write one JSON file per claim and never open the database, so a
 # public-facing process can still report what it observed while the controller remains the
-# only writer of state (docs/DETECTION-INPUTS.md 9).
+# only writer of state (docs/design/DETECTION-INPUTS.md 9).
 DEFAULT_SPOOL = "/var/lib/adaptive-tarpit/spool"
 # R1: the claim-record schema this controller reads. Producers emit it in every record
 # (`tarpit/server/server.py` and `gateway/src/spool.rs`), and a record claiming another version is
@@ -719,7 +719,7 @@ def load_allowlist(path):
 def emit_audit(args, event, **fields):
     """E13: append one structured event to the controller audit log.
 
-    The contract with Wazuh (docs/DETECTION-INPUTS.md section 1) is that Path A - the deterministic
+    The contract with Wazuh (docs/design/DETECTION-INPUTS.md section 1) is that Path A - the deterministic
     exploit-signature path - becomes visible to Path B - the probabilistic behavioural path. That only
     works if the record is machine-parseable without a bespoke decoder, so each line is one complete
     JSON object: a schema version, a UTC timestamp, the acting host, the event name, and the fields

@@ -162,6 +162,10 @@ if [ -x "$REPO_ROOT/bin/exploit-regress.py" ] && [ -n "${VENV:-}" ] && [ -x "$VE
     # Coverage says a verdict is supported. This says the *public* tree can show the support: the
     # signature is defined, the session is one an export ships, and the document names the exploit.
     # Without it, the install that found the bug keeps the only copy of the answer.
+    # Documentation rots by link: a moved file leaves a small lie nobody clicks until they do.
+    if [ -x "$REPO_ROOT/bin/check-doc-links.py" ]; then
+        run_step "docs: relative links resolve" "$VENV/bin/python" "$REPO_ROOT/bin/check-doc-links.py"
+    fi
     if [ -x "$REPO_ROOT/bin/exploit-upstream.py" ]; then
         run_step "ledger: contributable upstream" "$VENV/bin/python" \
             "$REPO_ROOT/bin/exploit-upstream.py" --quiet

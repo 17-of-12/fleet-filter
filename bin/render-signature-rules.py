@@ -130,7 +130,7 @@ def redos_assessment(regex):
     it with PCRE on *every* request that reaches the fixup phase. One catastrophic-backtrack
     pattern therefore costs every client on the host, not just the client that triggered it -
     the same worker-exhaustion failure mode this project already guards against for the
-    tarpit itself (docs/DETECTION-INPUTS.md, resource protection).
+    tarpit itself (docs/design/DETECTION-INPUTS.md, resource protection).
 
     The checks are structural rather than a simulation, because Python's `re` and Apache's
     PCRE backtrack differently and a Python-only match timing would not transfer. The shapes
