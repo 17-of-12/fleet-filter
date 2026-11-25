@@ -1,12 +1,13 @@
 # Certificates
 
-The gateway terminates TLS, so it holds the site certificate and owns its renewal. In the deployed
-estate most certificates live on the F5 instead; that is a different topology with different
-consequences, covered at the end. This document is for the case where the gateway is the endpoint.
+When the gateway terminates TLS it holds the site certificate and owns its renewal. When a load
+balancer terminates TLS instead, the certificate lives there and the gateway sees plaintext - a
+different topology with different consequences, covered at the end. This document is for the case
+where the gateway is the endpoint.
 
-Verified position, 2026-11-24: the deployed lab-web01 listener presents an InCommon RSA Server CA 2
-certificate for `CN=lab-web01.lab` valid to **2026-02-28**, and nothing in the repo watched
-that date.
+Whatever the shape, something must watch the expiry date. A certificate that expires while a
+monitoring gap is open presents a browser error to every visitor, and the gateway is the only
+component that can tell you what it is currently serving.
 
 ## The three pieces
 
@@ -29,7 +30,7 @@ than a line in a hook.
    otherwise indistinguishable from a renewal for the right one.
 4. **Atomic install.** A temporary file in the destination directory, then `rename`, so the gateway
    reads either the old file or the new one.
-5. **Ownership to the service account.** Measured on lab-web01: a `0600` key owned by root is *not*
+5. **Ownership to the service account.** Measured: a `0600` key owned by root is *not*
    readable by a service running as `fleet-filter-gw`, and the gateway loads TLS before binding, so
    that mistake is a failed start rather than a silent downgrade.
 6. **Reload, then read the served certificate back** and compare its SHA-256 fingerprint with the one

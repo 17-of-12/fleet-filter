@@ -47,7 +47,7 @@ state change (`claim`, `revoke`, `expire`, `bypass`), `0644 root:root`, fsynced 
 returns.
 
 ```json
-{"author":"pi","event":"claim","host":"lab-web01.lab","ip":"203.0.113.98","result":"added",
+{"author":"pi","event":"claim","host":"web01.example.org","ip":"203.0.113.98","result":"added",
  "schema":1,"source":"CVE-2026-119618/probe_path","ts":"2026-11-15T01:57:39Z","ttl":86400,
  "verdict":"confirmed"}
 ```
@@ -79,8 +79,8 @@ Owner's rules, accepted verbatim: *"there is no threshold if you send code looki
 exploit things"*, *"we want to waste their time more than anything else"*, *"that slows them down
 on their way across the network and the internet"*, *"i dont want hard blocks"*.
 
-v2 initially concluded *confirmed → block, suspected → tarpit*. **That was wrong**, and it is
-recorded here so it is not re-litigated in a later session. Two reasons:
+The design does not block on a confirmed claim: *confirmed → tarpit*, because two facts make a block
+the wrong answer:
 
 1. **A block is the fastest feedback an automated tool can receive.** A RST or a 403 costs the
    attacker about a millisecond and one retry slot, then they move on. If the objective is
@@ -282,8 +282,7 @@ NORMAL → OBSERVED → TARPITTED_SUSPECT   (Wazuh/Fail2ban promoted)
 
 - **`TARPITTED_SUSPECT`** keeps the brief's escalation ladder: 15 m → 30 m → 60 m.
 - **`TARPITTED_CONFIRMED`** should outlive it — a source that sent a known exploit payload is a
-  known adversary, not a maybe. Proposed default 24 h, configurable, still expiring (never
-  permanent by default). An IP that probes us for a CVE we have already patched is still worth
+  known adversary, not a maybe. Default 24 h, configurable, always expiring. An address that probes for a CVE the target has already patched is still worth
   remembering: it proves the host was enumerated.
 - **Allowlist still wins on both paths.** An authorised vulnerability scanner legitimately
   sends exploit payloads; without allowlist precedence, our own scanner would quarantine itself

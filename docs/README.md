@@ -1,8 +1,8 @@
 # Documentation
 
-Everything here is about running Fleet Filter. Design records and development handoffs are not
-published - they answer questions about how the system was arrived at, which is not the same question
-as how to operate it.
+These documents cover running Fleet Filter: deploying it behind your own certificate or load
+balancer, distributing signed policy to hosts, responding to a quarantined source, and judging what
+the project has actually been shown to stop.
 
 ## Deploying
 
@@ -35,5 +35,5 @@ as how to operate it.
 
 - Every relative link is checked by `bin/check-doc-links.py`, which runs inside `bin/check.sh --all`,
   so a moved file that leaves a stale reference fails the build.
-- A document that describes behaviour the code does not have is worse than no document. Where
-  something is planned rather than built, it says so.
+- A document records what the code does today. Work not yet built is listed once in
+  [ROADMAP.md](../ROADMAP.md), not promised inside a reference page.

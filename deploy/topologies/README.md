@@ -42,7 +42,7 @@ fails on any difference outside the timestamps, so the committed files cannot dr
 * No SNI-based certificate selection and no client-certificate (mTLS) verification. One certificate
   per listener.
 * The upstream leg is plaintext: `default_backend` must be `http://`. If the origin needs TLS, that
-  belongs at the balancer or in a future backend-TLS option, not in an example that pretends.
+  belongs at the balancer, not in an example that pretends.
 
 ## Install steps the policy does not do for you
 

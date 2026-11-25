@@ -68,7 +68,8 @@ owned by the owner rather than by H1:
    constraint today, but that is only true while the fd ceiling is what it is.
 
 H1 sets the ceilings the project owns. Those two belong to the host, and moving a shared host's Apache
-limits is a change for every vhost on it, so they stay as A7-a/A7-c pending an owner decision.
+limits is a change for every vhost on it, so they are left as configured unless an operator
+changes them deliberately.
 
 ## How a regression would be detected
 

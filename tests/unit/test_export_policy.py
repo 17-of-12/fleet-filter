@@ -58,6 +58,27 @@ class InternalBookkeepingTest(unittest.TestCase):
         """Every published document, including the three outside docs/."""
         return [p for p in self.mod.PUBLIC_DOCS if p.endswith(".md")]
 
+    def test_published_documents_do_not_discuss_unpublished_material(self):
+        """Telling a reader about documents they cannot open reads as a gap in the project.
+
+        A public page that says "design records are not published" addresses an internal decision to
+        an external audience: the reader never knew those documents existed and cannot act on the
+        note. Either describe the thing, or leave it out.
+        """
+        banned = (r"\bnot published\b", r"\bunpublished\b", r"\binternal (?:document|doc)s?\b",
+                  r"\bdesign records?\b", r"\bhandoffs?\b",
+                  # Notes addressed to the maintainer: a decision we have not taken, or a host only
+                  # our deployment has.
+                  r"\bowner (?:decision|directive)\b", r"\blab-web01\b", r"\butility\.is\b",
+                  r"\bff-(?:apache|control|wp|fpm)\b")
+        offenders = []
+        for doc in self.published_files():
+            for lineno, line in enumerate(open(os.path.join(ROOT, doc)).read().splitlines(), 1):
+                for pattern in banned:
+                    if re.search(pattern, line, re.IGNORECASE):
+                        offenders.append((doc, lineno, re.search(pattern, line, re.I).group(0)))
+        self.assertEqual(offenders, [], "published docs discuss unpublished material: %s" % offenders)
+
     def test_no_bundle_ids_in_published_documents(self):
         """A bundle id is a pointer to a plan only the maintainers can see."""
         offenders = []
