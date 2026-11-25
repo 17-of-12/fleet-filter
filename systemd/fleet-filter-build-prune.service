@@ -5,7 +5,7 @@
 # ~1.1 GB Rust builder-stage image. Nothing failed until the root filesystem reached 88%, which is
 # the usual point at which a build host notices it has no retention policy.
 Description=fleet-filter: remove superseded container images on the build host
-Documentation=file:///home/agent/projects/Fleet-Filter/docs/design/ADR-0001.md
+Documentation=file:///home/agent/projects/Fleet-Filter/the repository documentation
 
 [Service]
 Type=oneshot

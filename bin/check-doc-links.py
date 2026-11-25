@@ -17,6 +17,7 @@ Usage
 import argparse
 import os
 import re
+import pathlib
 import subprocess
 import sys
 
@@ -35,23 +36,41 @@ LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 DOC_REFERENCE = re.compile(r"docs/[A-Za-z0-9_./-]+\.md")
 
 
+def files_matching(patterns):
+    """Files matching the patterns, from git when available and from the filesystem when not.
+
+    The export tree has no `.git` in it, so a checker that only asks git finds nothing and reports
+    success - the most dangerous kind of green. Falling back to a walk means the same check runs in a
+    clone, a tarball and a working copy.
+    """
+    try:
+        out = subprocess.run(["git", "-C", REPO_ROOT, "ls-files"] + list(patterns),
+                             capture_output=True, text=True, check=True).stdout
+        listed = [line for line in out.splitlines() if line.strip()]
+        if listed:
+            return listed
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    found = []
+    for pattern in patterns:
+        for path in pathlib.Path(REPO_ROOT).rglob(pattern):
+            if path.is_file():
+                found.append(str(path.relative_to(REPO_ROOT)))
+    return sorted(set(found))
+
+
 def tracked_code():
     """Files whose comments may name a document by path."""
-    out = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "*.rs", "*.py", "*.sh", "*.xml",
-                          "*.service", "*.timer"],
-                         capture_output=True, text=True, check=True).stdout
     # Tests name documents that deliberately do not exist (fixtures for this very check).
     skip = EXCLUDED_PREFIXES + ("tests/",)
-    return [line for line in out.splitlines()
-            if line.strip() and not line.startswith(skip)]
+    return [line for line in files_matching(["*.rs", "*.py", "*.sh", "*.xml", "*.service", "*.timer"])
+            if not line.startswith(skip)]
 
 
 def tracked_markdown():
     """Every tracked .md file, so untracked drafts do not fail the gate."""
-    out = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "*.md"],
-                         capture_output=True, text=True, check=True).stdout
-    return [line for line in out.splitlines()
-            if line.strip() and not line.startswith(EXCLUDED_PREFIXES)]
+    return [line for line in files_matching(["*.md"])
+            if not line.startswith(EXCLUDED_PREFIXES)]
 
 
 def anchors(path):
@@ -121,6 +140,10 @@ def main(argv=None):
 
     for source, lineno, link, problem in failures:
         print("BROKEN  %s:%d  %s  (%s)" % (source, lineno, link, problem))
+    if total == 0:
+        # A check that examined nothing must not look like a check that passed.
+        print("check-doc-links: no links found - refusing to report success")
+        return 1
     print("\n%d link(s) checked, %d broken" % (total, len(failures)))
     return 1 if failures else 0
 
