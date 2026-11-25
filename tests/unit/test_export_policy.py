@@ -22,6 +22,15 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def exporter_present():
+    """Whether the exporter exists in this tree.
+
+    It is deliberately not published, so this test cannot run in the public tree - but a test that
+    errors there makes the public CI red for a reason that is not a defect. Skip, and say why.
+    """
+    return os.path.isfile(os.path.join(ROOT, "bin", "export-public.py"))
+
+
 def load_exporter():
     """Import bin/export-public.py, whose name is not a valid module identifier."""
     path = os.path.join(ROOT, "bin", "export-public.py")
@@ -31,6 +40,7 @@ def load_exporter():
     return module
 
 
+@unittest.skipUnless(exporter_present(), "the exporter is not published; this test covers it only")
 class InternalBookkeepingTest(unittest.TestCase):
     """Build bookkeeping in a published document is a leak of the process, not of a secret.
 
@@ -70,6 +80,7 @@ class InternalBookkeepingTest(unittest.TestCase):
         self.assertEqual(offenders, [], "published documents cite unpublished paths: %s" % offenders)
 
 
+@unittest.skipUnless(exporter_present(), "the exporter is not published; this test covers it only")
 class PublicDocsAllowlistTest(unittest.TestCase):
     """The allowlist is the contract; these tests describe what it means in practice."""
 

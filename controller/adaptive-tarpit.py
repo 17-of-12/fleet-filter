@@ -2,7 +2,7 @@
 """
 adaptive-tarpit - quarantine controller for the Fleet-Filter project.
 
-Responsibilities (docs/spec/DETECTION-INPUTS.md section 9, docs/FLEET-STATE.md):
+Responsibilities (docs/spec/DETECTION-INPUTS.md section 9, the fleet-state design):
   * own the authoritative per-host claim store (SQLite);
   * consume verdicts (Wazuh AR, fail2ban, CLI claims, fleet sync all land here);
   * render the Apache RewriteMap atomically;
