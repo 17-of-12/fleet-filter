@@ -68,15 +68,26 @@ jobs:
         # runner image provides, which is the closest available stand-in in CI.
         run: PYTHONS="$PWD/.venv/bin/python /usr/bin/python3" TIMEOUT=600 bin/check.sh --all
 
-      - name: Refuse estate identifiers
-        # The exporter rewrites these before publishing, so a hit here means a rewrite was missed or a
-        # file reached the repository another way. Patterns are base64 so this workflow does not
-        # itself contain the strings it refuses.
+      - name: Refuse private addresses in the published tree
+        # Shapes only, never our names. The first version of this check carried the literal
+        # identifiers, base64-encoded, inside this file - which published exactly what it existed to
+        # prevent, since base64 is an encoding, not a secret. These patterns describe a class of
+        # thing that must not appear in a public tree, so the check is safe to publish.
+        #
+        # Named identifiers are still caught: bin/export-public.py refuses an export containing one,
+        # which is the first line and runs before anything reaches this repository.
         run: |
           python3 - <<'PY'
-          import base64, pathlib, subprocess, sys
-          PATTERNS_B64 = ["dWluZHk=", "MTkyLjE2OC4=", "MTkyLjE0Ni4=", "MTk4LjE4LjU1Lg==", "YXVzdGluc3I=", "dG9vbGJveDAx", "dXRpbGl0eS5pcw=="]
-          patterns = [base64.b64decode(p).decode() for p in PATTERNS_B64]
+          import pathlib, re, subprocess, sys
+          SHAPES = [
+              r"\b192\.168\.\d{1,3}\.",
+              r"\b172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.",
+              # Our own testnet block, not the whole 198.18/15 reservation: documents legitimately
+              # name the reserved range, and a guard that cries about that gets switched off.
+              r"\b198\.18\.55\.\d{1,3}",
+              r"\.is\.[a-z0-9-]+\.edu\b",
+          ]
+          rules = [(re.compile(s, re.IGNORECASE), s) for s in SHAPES]
           files = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True).stdout.split()
           hits = []
           for name in files:
@@ -86,18 +97,18 @@ jobs:
               if not path.is_file():
                   continue
               try:
-                  text = path.read_text(errors="ignore").lower()
+                  text = path.read_text(errors="ignore")
               except OSError:
                   continue
-              for pattern in patterns:
-                  if pattern.lower() in text:
-                      hits.append((name, pattern))
-          for name, pattern in hits[:40]:
-              print("ESTATE IDENTIFIER in " + name)
+              for pattern, label in rules:
+                  match = pattern.search(text)
+                  if match:
+                      hits.append((name, label, match.group(0)))
+          for name, label, found in hits[:40]:
+              print("PRIVATE ADDRESS " + name + ": " + label + " -> " + found)
           print(str(len(files)) + " file(s) checked, " + str(len(hits)) + " hit(s)")
           sys.exit(1 if hits else 0)
           PY
-
       - name: Refuse a tree that only passes with a dirty working copy
         # The gate builds and runs; it must not leave tracked files modified. A formatter that ran
         # and was not committed would otherwise make every later run green for the wrong reason.
