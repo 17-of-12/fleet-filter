@@ -2,10 +2,10 @@
 # Project: Fleet-Filter (Bundle Y) - keeps the fleet console's cache fresh without a human in the loop.
 # Companion to fleet-filter-ui.service: that unit serves the console, this one refills the SQLite cache
 # the console reads. Nothing served depends on it. A failed sync leaves the console rendering the last
-# good cache (the stale-on-error rule in docs/FLEET-STATE.md), which is why freshness belongs to this
+# good cache (the stale-on-error rule in the repository documentation), which is why freshness belongs to this
 # timer and not to the app process.
 Description=fleet-filter-ui: refresh the fleet console cache (Bundle Y)
-Documentation=file:///home/agent/projects/Fleet-Filter/docs/operations/CONSOLE.md
+Documentation=file:///home/agent/projects/Fleet-Filter/the repository documentation
 After=network-online.target
 Wants=network-online.target
 
