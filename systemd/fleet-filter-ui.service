@@ -4,14 +4,14 @@
 # or controller on any fleet host starts or serves through it, so `systemctl stop` it and served
 # traffic does not change. The console's own availability is the only thing this unit controls.
 Description=fleet-filter-ui: fleet console (Bundle Y)
-Documentation=file:///home/agent/projects/Fleet-Filter/docs/CONSOLE.md
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/operations/CONSOLE.md
 
 [Service]
 Type=simple
 # Runs as the service account that owns the repository and, more importantly, the SSH key that
 # web/sync.py uses to read each registered host's controller state. A dedicated unprivileged user
 # (the pattern used for fleet-filter-gw on lab-web01) would need its own delegated read key before
-# the sync path would work, so the console inherits `agent` instead. See docs/CONSOLE.md, "Identity".
+# the sync path would work, so the console inherits `agent` instead. See docs/operations/CONSOLE.md, "Identity".
 User=agent
 Group=agent
 WorkingDirectory=/home/agent/projects/Fleet-Filter

@@ -2,7 +2,7 @@
 
 **Status:** accepted direction, v2
 **Date:** 2026-11-12
-**Supersedes:** v1 of this file, and the single-input detection assumption in `docs/HANDOFF.md` §7
+**Supersedes:** v1 of this file, and the single-input detection assumption in the original design brief
 
 **Revision note.** v1 proposed that signatures feed the controller's scoring model and only
 "promoted" signatures could quarantine on one hit. The owner rejected that: the regex path is
@@ -132,7 +132,7 @@ client classes wait, we cannot claim a time-wasted number, only a theoretical on
 Tier 0  Apache RewriteMap IP lookup        inline, one hash lookup per request
 Tier 1  Apache signature match             inline, PCRE per request
 Tier 2  Access-log / Wazuh ingestion       near-line, seconds
-Tier 3  nftables set                       connection level (Bundle D / J)
+Tier 3  nftables set                       connection level
 ```
 
 v1's objection to Tier 1 was per-request PCRE cost, and it was only valid for a large set of
@@ -333,24 +333,3 @@ Response), and the Fail2ban action each submit **claims** carrying `source`, `cl
 detector's lease — the rule the brief already states for Wazuh/Fail2ban in §7.3 extends to the
 signature path unchanged. A Path A claim additionally upgrades state to `TARPITTED_CONFIRMED`.
 
-## 10. Effect on the roadmap
-
-- **Bundle E** owns: state store with the split state model, claim merge, **`0|1|2` map value
-  semantics with reject reserved for quota backpressure** (§1b), atomic map generation, expiry,
-  allowlist, bypass, `sigtest`, and the signature store. It no longer owns a scoring model.
-- **Bundle H** (resource protection) implements the quota that produces `2` entries, and must
-  clear them automatically when capacity frees — a quota reject must not persist as a ban.
-- **Bundle D**'s comparison sharpens: if the objective is attacker-time consumed per
-  defender-resource spent, then holding connections in a cheap dedicated listener (nftables DNAT)
-  beats holding them in Apache workers on cost grounds alone, independent of the CVE argument.
-- **New requirement:** cross-host deception consistency — a shared deception identity so the same
-  fake application is presented on every host the same adversary reaches.
-- **Bundle B** (tarpit backend) gains per-signature response profiles and the
-  `verdict_to_report` decision, not just generic profiles.
-- **Bundle L** (Tier 1 inline include) moves earlier, alongside E, because exact patterns are
-  cheap to evaluate inline.
-- **Bundle F** (Wazuh AR) stays parallel and still blocked on the manager address question;
-  Path A gives us a working detector in the meantime.
-- **New:** the controller must emit a structured audit log that Wazuh can ingest as a custom log
-  source, so Path A results feed Path B correlation (§1).
-- **Fleet rollout** remains an Ansible role from day 1, not a retrofitted `install.sh`.

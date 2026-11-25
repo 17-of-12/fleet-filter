@@ -6,7 +6,7 @@
 # generated artifact still matches this configuration.
 #
 # The values here are the ones measured in `data/results/container-target-discovery-2026-11-14.md`
-# and decided in `docs/container/runtime-decision.md`. Changing a mount, a user, or the
+# and decided in `docs/design/runtime-decision.md`. Changing a mount, a user, or the
 # SELinux toggle here is the only sanctioned way to change the canary.
 
 version: 1

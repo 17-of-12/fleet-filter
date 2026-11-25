@@ -29,22 +29,30 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        # Pinned to a commit, not a tag: a tag can be moved, and a moved tag runs different code with
+        # the same workflow. The version is a comment because dependabot maintains the comment and the
+        # SHA together.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
 
       - name: Install the pinned Rust toolchain
-        uses: dtolnay/rust-toolchain@1.92.0
+        # The action and the toolchain are separate pins. `@v1` is the action; `toolchain:` is the
+        # compiler. Writing the version in the `uses:` ref conflated the two, and dependabot read it
+        # as an action version and proposed moving the compiler from 1.92.0 to 1.120.0 - a change to
+        # what the code is built with, disguised as a dependency bump.
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # v1
         with:
+          toolchain: "1.92.0"
           components: rustfmt, clippy
 
       - name: Cache the cargo target directory
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
         with:
           path: ~/.cache/fleet-filter-gateway/target
           key: cargo-${{ runner.os }}-${{ hashFiles('gateway/Cargo.lock') }}
           restore-keys: cargo-${{ runner.os }}-
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: "3.12"
 

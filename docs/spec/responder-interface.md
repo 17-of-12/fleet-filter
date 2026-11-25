@@ -1,4 +1,4 @@
-# Responder interface (Bundle T2) — what the gateway may call, and what stays outside it
+# Responder interface — what the gateway may call, and what stays outside it
 
 Status: **normative for Stage 2**. Applies to `tarpit/server/server.py` (the reference
 implementation, deployed on lab-web01), to the inline responder in `gateway/src/deception.rs`
@@ -41,7 +41,7 @@ what each implementation must do with them.
 | `X-Fleet-Filter-Posture` | The policy rule that produced a local rejection (`method_not_allowed`, `paused`, …). |
 | `X-Fleet-Filter-Deception` | The inline profile, the planned first-byte-to-last-byte duration and the piece count (`exploit-probe;drip_ms=2300;chunks=47`), so the shape is documented by the response itself. On budget exhaustion the value is `budget-exhausted` and there is no drip. Changed 2026-11-24 from `delay_ms=N`: the old field named a pause the gateway no longer takes. |
 | Delay | Either a drip schedule (Python responder: fixed-size chunks over N seconds) or a single bounded delay (inline: `min(profile.delay_ms, max_drip_ms)`). Either way the response must complete; a responder that stalls a connection past its ceiling is a bug, not a feature. |
-| Connection handling | Response `Content-Length` must match the bytes sent (a mismatch is `curl` error 18, seen in Bundle P). Request bodies must be drained or the connection closed (PT-06: an unread POST body made the next pipelined request parse as `ABCDGET`). Keep-alive must be preserved for normal responses. |
+| Connection handling | Response `Content-Length` must match the bytes sent (a mismatch is `curl` error 18, seen in testing). Request bodies must be drained or the connection closed (PT-06: an unread POST body made the next pipelined request parse as `ABCDGET`). Keep-alive must be preserved for normal responses. |
 | Concurrency | Every implementation bounds itself: the responder with global and per-IP semaphores plus a socket timeout (PT-07); the inline path with `DripBudget` (`max_concurrent_drips`, RAII permits). A responder with no bound is the reason the engine stays outside the gateway. |
 
 ## How a backend is chosen
@@ -92,12 +92,12 @@ producer's spool, and nothing but the controller writes SQLite.
 2. **No machine-readable schema for the HTTP contract.** This file is prose. A container image or a
    Rust rewrite would be reviewed against prose; if a third implementation appears, the contract
    should become a fixture (a recorded request/response set) before that happens.
-3. **The reference responder had no `/health`** (Bundle B6) - **fixed 2026-11-14**. `GET /health`
+3. **The reference responder had no `/health`** - **fixed 2026-11-14**. `GET /health`
    now answers `200` with a JSON document in ~1 ms on lab-web01 while the same process still serves
    `/ai.html` in 5.04 s, and the probe files no claim. The body carries the responder's own
    fingerprint (banner, chunk size/delay, drip cap, whether reporting is enabled), so a mis-deployed
    responder is visible from its health answer rather than only from a unit diff.
-4. **Response profiles are not per-signature yet** (Bundle B9) - **fixed 2026-11-16, and the
+4. **Response profiles are not per-signature yet** - **fixed 2026-11-16, and the
    original wording was wrong about the mechanism.** The responder never selected "by status code
    from `index.json`": `tarpit/server/server.py` reads `X-Tarpit-Signature`, looks the value up in
    `signature_responses`, and passes the result to `profiles.select()` as `signature_profile`,
@@ -143,7 +143,7 @@ test:
 | Half | Before | After |
 |---|---|---|
 | **Shape** | The gateway `sleep()`ed the profile delay and then wrote the whole body (a latency tarpit); the responder dripped 1-3 bytes 20-60 ms apart. One request distinguished them. | Fixed: `deception::DripBody` streams the static body in `chunk_size` pieces with `chunk_delay_ms` gaps, both defaulting to the catalogue's `stream_defaults` (3 bytes, 50 ms), and declares `Content-Length` because the responder does. |
-| **Body** | The gateway serves short compile-time static bodies (a 150-byte 403); the responder serves the reviewed `/opt/tarpit/responses/403.html` (3539 bytes, the Apache test page). A client told the two apart by content alone, which contradicts "one fake application". | **Still divergent.** Tracked as Bundle AD: the fix is to generate the gateway's bodies from `tarpit/profiles/catalogue.yaml` at build time. Until then this document must not claim body parity. |
+| **Body** | The gateway serves short compile-time static bodies (a 150-byte 403); the responder serves the reviewed `/opt/tarpit/responses/403.html` (3539 bytes, the Apache test page). A client told the two apart by content alone, which contradicts "one fake application". | **Still divergent.** The planned fix is to generate the gateway's bodies from `tarpit/profiles/catalogue.yaml` at build time. Until then this document must not claim body parity. |
 
 The lesson worth keeping: the previous version of this file claimed `a client cannot tell which one
 answered`. Nothing measured it. A claim in a contract document is not evidence that the contract is

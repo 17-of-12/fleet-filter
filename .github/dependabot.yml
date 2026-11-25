@@ -25,6 +25,9 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    # Actions are pinned to commit SHAs; dependabot updates the SHA and the `# vN` comment together.
+    # A toolchain version is NOT an action version: it lives in `with: toolchain:` and is pinned by
+    # ADR-0001, so a bump there is a decision, never a dependency update.
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

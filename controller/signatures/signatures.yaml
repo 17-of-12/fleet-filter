@@ -1,6 +1,6 @@
 # =====================================================================
 # Fleet-Filter signature store (Path A - exploit signatures)
-# Schema: docs/DETECTION-INPUTS.md section 3
+# Schema: docs/spec/DETECTION-INPUTS.md section 3
 # Provenance rule: every pattern here is derived from a named source in
 # `source:`. No folklore patterns. See data/research/cve-2026-119618-2026-11-12.md
 # =====================================================================
@@ -403,7 +403,7 @@ signatures:
     # DECEPTION. `protocol` (this CVE) means the vulnerable code runs while Apache
     # builds the request_rec, upstream of every module hook including mod_rewrite's
     # map_to_storage phase - so matching the request cannot un-run the bug. See
-    # docs/DETECTION-INPUTS.md section 3a.
+    # docs/spec/DETECTION-INPUTS.md section 3a.
     vuln_layer: protocol
     response_profile_default: generic_slow
     verdict_to_report: vulnerable
@@ -464,7 +464,7 @@ signatures:
           method: [PRI]
         response_profile: slow_400
         # A malformed request answered with a 400 reports nothing installed; see B9 in
-        # docs/PROFILES.md for why the verdict has to match the status the profile emits.
+        # docs/operations/PROFILES.md for why the verdict has to match the status the profile emits.
         verdict_to_report: absent
         tests:
           log_positive:

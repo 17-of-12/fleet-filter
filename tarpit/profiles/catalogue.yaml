@@ -1,7 +1,7 @@
 # Tarpit deception catalogue - Bundle I1 (the A-G profiles), I4 (one shared identity),
 # and the vocabulary that Bundle B9 pairs a signature variant to a response.
 #
-# Why this file exists as data: the handoff names seven response strategies (docs/HANDOFF.md
+# Why this file exists as data: the handoff names seven response strategies (docs/handoffs/HANDOFF.md
 # section 12.1) but the responder and the gateway each grew their own names for them
 # (`generic_slow` / `slow_error` in signatures.yaml, `generic` / `exploit-probe` / `api-probe`
 # in gateway/src/deception.rs). Three vocabularies for one concept is how a host ends up

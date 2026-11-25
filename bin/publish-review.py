@@ -9,8 +9,12 @@ and "required approval" are mutually exclusive. A required *check* has no such p
 job can satisfy it - and a check is a first-class gate on a ruleset.
 
 So the review is: an agent reads the diff and decides, this script posts that decision as the
-`agent-review` check, and the merge only proceeds when the check is a success. The agent never merges
-by hand and never posts a check it did not earn, because the verdict is passed in as data.
+`agent-review` check, and the merge only proceeds when the check is a success.
+
+What this does *not* do is verify the verdict. The verdict arrives as a command-line argument, so the
+script records a decision; it cannot prove a reviewer made it. The gate is only as honest as the
+process that calls it - which is why the caller is the reviewer subagent, not a human typing `pass`,
+and why the notes are posted verbatim where anyone can read them.
 
 Usage
 -----
@@ -119,6 +123,8 @@ def main(argv=None):
     parser.add_argument("--verdict", choices=("pass", "fail"), help="the reviewer's decision")
     parser.add_argument("--notes", default="", help="why, in the reviewer's words")
     parser.add_argument("--no-merge", action="store_true", help="post the check but do not merge")
+    parser.add_argument("--merge-only", action="store_true",
+                        help="merge an already-posted pass, without posting another check")
     args = parser.parse_args(argv)
 
     token_value = token()
@@ -128,8 +134,18 @@ def main(argv=None):
         show_diff(token_value, args.pr)
         return 0
 
+    if args.merge_only:
+        # The check and the merge are separate on purpose: `gate` needs time to report, and a merge
+        # that is retried after the checks land is better than one that fails and needs re-running.
+        status, merged = call("/repos/%s/%s/pulls/%d/merge" % (OWNER, REPO, args.pr), token_value,
+                              "PUT", {"merge_method": MERGE_METHOD})
+        if status != 200:
+            sys.exit("publish-review: merge refused (%s): %s" % (status, merged))
+        print("merged #%d: %s" % (args.pr, merged.get("message", "")))
+        return 0
+
     if not args.verdict:
-        parser.error("one of --show-diff, --verdict pass or --verdict fail is required")
+        parser.error("one of --show-diff, --verdict pass, --verdict fail or --merge-only is required")
 
     status, check = post_check(token_value, pr, args.verdict, args.notes)
     if status not in (200, 201):

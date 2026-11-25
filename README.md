@@ -80,7 +80,8 @@ The gateway's current matching primitives include literal request-path prefixes,
 
 Rules should target the conditions that make an exploit possible, rather than indiscriminately blocking large classes of legitimate requests. Variants, benign negative tests and the position of the vulnerable component all matter.
 
-See [Detection Inputs](docs/DETECTION-INPUTS.md) for the detection architecture and [Exploit Corpus](docs/EXPLOIT-CORPUS.md) for the verification workflow.
+The [Exploit Corpus](docs/EXPLOIT-CORPUS.md) documents the verification workflow a rule has to pass
+before it is trusted.
 
 ## Built for agent-assisted vulnerability response
 
@@ -170,7 +171,7 @@ The publisher supports RSA signatures over policy digests. Hosts verify the cont
 
 Existing accepted connections retain the policy they started with; newly accepted connections receive the updated configuration. Distribution time depends on the scheduling of the host fetchers and successful verification, rather than a promise of instantaneous propagation.
 
-See [Policy Distribution](docs/POLICY-DISTRIBUTION.md) for provisioning keys, publishing, fetching and rollback. Protect the signing key and control node: a valid signature establishes publisher identity, not the security correctness of the policy.
+See [Policy Distribution](docs/operations/POLICY-DISTRIBUTION.md) for provisioning keys, publishing, fetching and rollback. Protect the signing key and control node: a valid signature establishes publisher identity, not the security correctness of the policy.
 
 ## Deployment topologies
 
@@ -243,12 +244,10 @@ The most useful contribution is a reproducible, narrowly scoped security improve
 
 Start with these references:
 
-- [Exploit corpus and verification](docs/EXPLOIT-CORPUS.md)
-- [Gateway architecture and development handoff](docs/SECURITY-GATEWAY-HANDOFF.md)
-- [Detection inputs and signature design](docs/DETECTION-INPUTS.md)
-- [Signed policy distribution](docs/POLICY-DISTRIBUTION.md)
+- [Documentation index](docs/README.md) - what to read for deploying, operating or contributing
+- [Exploit corpus and verification](docs/EXPLOIT-CORPUS.md) - the evidence ledger
+- [Signed policy distribution](docs/operations/POLICY-DISTRIBUTION.md)
 - [Deployment topologies](deploy/topologies/README.md)
-- [Original tarpit architecture](docs/HANDOFF.md)
 - [Data sources and third-party attributions](docs/DATA-SOURCES.md)
 
 ## License
