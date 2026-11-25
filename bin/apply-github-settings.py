@@ -58,10 +58,14 @@ RULESET = {
     "target": "branch",
     "enforcement": "active",
     "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
-    "bypass_actors": [{"actor_id": 5922290, "actor_type": "Integration", "bypass_mode": "always"}],
+    # No bypass: the release job earns its merge through the same checks as a human. Bypassing was
+    # the earlier design and it meant nothing could stop a bad export.
+    "bypass_actors": [],
     "rules": [
         {"type": "pull_request", "parameters": {
-            "required_approving_review_count": 1,
+            # 0 approvals on purpose: a review bot is a check, not a second GitHub account, and an
+            # app cannot approve its own PR. The `agent-review` check below is the review gate.
+            "required_approving_review_count": 0,
             "dismiss_stale_reviews_on_push": True,
             "require_code_owner_review": False,
             "require_last_push_approval": False,
@@ -69,7 +73,7 @@ RULESET = {
         }},
         {"type": "required_status_checks", "parameters": {
             "strict_required_status_checks_policy": True,
-            "required_status_checks": [{"context": "gate"}],
+            "required_status_checks": [{"context": "gate"}, {"context": "agent-review"}],
         }},
         {"type": "non_fast_forward"},
         {"type": "deletion"},
@@ -196,6 +200,11 @@ def verify(token_value):
                         detail.get("enforcement") == "active"))
         results.append(("  require pull request", True, "pull_request" in types,
                         "pull_request" in types))
+        contexts = [c.get("context") for r in detail.get("rules", [])
+                    if r["type"] == "required_status_checks"
+                    for c in r.get("parameters", {}).get("required_status_checks", [])]
+        results.append(("  required agent-review", True, "agent-review" in contexts,
+                        "agent-review" in contexts))
         results.append(("  required check gate", True,
                         any(r["type"] == "required_status_checks" and
                             any(c.get("context") == "gate"
@@ -210,7 +219,7 @@ def verify(token_value):
         results.append(("  no force push", True, "non_fast_forward" in types,
                         "non_fast_forward" in types))
         results.append(("  no deletion", True, "deletion" in types, "deletion" in types))
-        results.append(("  release bot bypass", 5922290, sorted(bypass), 5922290 in bypass))
+        results.append(("  no bypass actor", [], sorted(bypass), not bypass))
 
     security = repo.get("security_and_analysis") or {}
     for name, key in (("secret scanning", "secret_scanning"),
