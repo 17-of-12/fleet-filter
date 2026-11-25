@@ -87,7 +87,7 @@ producer's spool, and nothing but the controller writes SQLite.
 
 | divergence | current state | tracked as |
 |---|---|---|
-| `Server` banner | inline responder sends `fleet-filter-gateway/0.1.0`; the Python responder can be configured to match the origin | roadmap: configurable banner |
+| `Server` banner | met: `[deception] server_banner` sets it, so the inline responder presents whatever the operator configures | - |
 | response body | gateway serves a short compile-time body; the responder serves the full profile page | roadmap: generate both from `tarpit/profiles/catalogue.yaml` |
 | HTTP contract | this document is prose; no machine-readable fixture set exists | roadmap: record fixtures |
 | drip shape | met: `deception::DripBody` streams in `chunk_size` pieces with `chunk_delay_ms` gaps and declares `Content-Length` | - |

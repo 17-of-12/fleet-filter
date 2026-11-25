@@ -18,7 +18,6 @@ Order is rough intent, not a schedule.
 | item | why | state |
 |---|---|---|
 | Generate gateway and responder bodies from one catalogue | The gateway serves a short static body; the responder serves the full profile page. A client can tell them apart by content, which contradicts presenting one fake application. | not started |
-| Configurable `Server` banner on the inline responder | The inline path advertises itself as the gateway; the Python responder can be configured to match the origin. | not started |
 | Machine-readable responder contract | `docs/spec/responder-interface.md` is prose, so a third implementation is reviewed against prose. A recorded request/response fixture set would make it testable. | not started |
 
 ## Transport
