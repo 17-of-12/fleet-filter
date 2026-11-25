@@ -39,6 +39,8 @@ REMOTE="https://github.com/17-of-12/fleet-filter.git"
 TOKEN_FILE=""
 EXPORT_DIR=""
 DRY_RUN=0
+VIA_PR=0
+BRANCH=""
 
 die() { echo "publish-public: $*" >&2; exit 1; }
 note() { echo "publish-public: $*" >&2; }
@@ -51,6 +53,7 @@ while [ $# -gt 0 ]; do
         --token-file) TOKEN_FILE=${2:?--token-file needs a path}; shift 2 ;;
         --export-dir) EXPORT_DIR=${2:?--export-dir needs a path}; shift 2 ;;
         --dry-run) DRY_RUN=1; shift ;;
+        --pr) VIA_PR=1; shift ;;
         --help|-h) sed -n '3,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown argument: $1" ;;
     esac
@@ -98,10 +101,27 @@ git -c user.name="pragma-17of12[bot]" \
     commit --quiet -m "$MESSAGE"
 note "committed $(git log --format=%h -1): $(git log --format=%s -1)"
 
+# 4a. Pull-request mode: the release travels as a PR so an agent review can gate it. The merge
+#     itself is done by bin/publish-review.py after the reviewer has read the diff.
+if [ "$VIA_PR" -eq 1 ]; then
+    BRANCH="release/$(date -u +%Y-%m-%dT%H%M%SZ)"
+    git checkout --quiet -b "$BRANCH"
+    note "release branch: $BRANCH"
+fi
+
 # 4. Fast-forward only. The token goes in the environment, not argv, so it does not appear in ps.
 if [ -n "$TOKEN_FILE" ]; then
     [ -r "$TOKEN_FILE" ] || die "cannot read token file: $TOKEN_FILE"
     TOKEN=$(tr -d '[:space:]' < "$TOKEN_FILE")
+    if [ "$VIA_PR" -eq 1 ]; then
+        GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0=http.extraheader \
+        GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" \
+            git push --quiet origin "$BRANCH":"$BRANCH" || die "could not push the release branch"
+        note "pushed branch $BRANCH; open the pull request next:"
+        note "  bin/publish-open-pr.py --branch $BRANCH --title \"$(git log --format=%s -1)\""
+        exit 0
+    fi
     GIT_CONFIG_COUNT=1 \
     GIT_CONFIG_KEY_0=http.extraheader \
     GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" \

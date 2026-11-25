@@ -8,7 +8,8 @@ rather than a thing someone remembers.
 
 ## Branch protection for `main`
 
-Settings -> Branches -> Add branch protection rule -> branch name pattern `main`:
+**Applied as a ruleset, not a classic protection rule** - see "Why a ruleset" below. The intended
+values, which `bin/apply-github-settings.py` applies and verifies, are:
 
 | setting | value | why |
 |---|---|---|
@@ -21,6 +22,18 @@ Settings -> Branches -> Add branch protection rule -> branch name pattern `main`
 | Require linear history | on | matches the incremental publish and keeps `git log` readable |
 | Allow force pushes | **off** | history rewriting is how the estate detail leaked once already |
 | Allow deletions | **off** | |
+
+### Why a ruleset
+
+Classic branch protection cannot exempt a GitHub App from its own rule, and an app cannot approve its
+own pull request. With classic protection plus "require review", the release job that publishes the
+export is rejected permanently - the two requirements contradict each other.
+
+A ruleset can name a bypass actor, so `main protection` requires a pull request and a passing `gate`
+check from humans, and names the `Pragma-17of12` app (actor id 5922290) as a bypass actor for the
+release job. That is a deliberate exception and it is recorded here rather than left implicit: the
+bot publishes an export of a tree that already passed the same gate, and it is the only automated
+path to `main`.
 
 Also enable **Require review from Code Owners** once a maintainers team exists and a `CODEOWNERS`
 file is added. A `CODEOWNERS` file referencing a team that does not exist is worse than none: the

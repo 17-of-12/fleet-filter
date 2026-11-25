@@ -92,6 +92,7 @@ def load_detection_renderer():
 def render_policy(topology_name, host, backend, cert=None, key=None, trusted_proxies=(),
                   version=None, spool_dir="/var/lib/fleet-filter-gateway/spool",
                   map_path="/etc/fleet-filter/quarantine.map", source_commit="unknown",
+                  generated_at=None,
                   bind=None):
     """Render one complete policy bundle for `topology_name`.
 
@@ -125,7 +126,7 @@ def render_policy(topology_name, host, backend, cert=None, key=None, trusted_pro
 
     detection = load_detection_renderer()
     store_text = STORE.read_text()
-    detection_section, _, _ = detection.render(store_text, str(STORE))
+    detection_section, _, _ = detection.render(store_text, str(STORE), generated_at=generated_at)
 
     header = [
         "# Gateway policy - topology: %s" % topology_name,
@@ -163,7 +164,10 @@ def render_policy(topology_name, host, backend, cert=None, key=None, trusted_pro
         "[policy]",
         "schema_version = 1",
         'version = "%s"' % (version or ("%s-%s" % (topology_name, host))),
-        'generated_at = "%s"' % datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        # Deterministic when asked: the public export renders these files on every publish, and a
+        # timestamp that moves on every render turns a no-op release into three modified files.
+        'generated_at = "%s"' % (generated_at or
+                                  datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")),
         'source_commit = "%s"' % source_commit,
         'mode = "serve"',
         "",
