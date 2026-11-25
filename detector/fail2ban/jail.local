@@ -1,0 +1,56 @@
+# /etc/fail2ban/jail.local
+#
+# Fleet-Filter test configuration for lab-web01.lab.
+# Repo source of truth: projects/Fleet-Filter/detector/fail2ban/jail.local
+#
+# Two safety properties, both deliberate:
+#   1. `enabled = false` in [DEFAULT] and only ONE jail enabled below. The distro's
+#      shipped [sshd] jail stays off: on a host we administer over SSH, a mistyped
+#      password must not be able to remove our own access path.
+#   2. `banaction = fleet-filter.conf` globally, so no jail can reach iptables/nftables
+#      or firewalld. Bans become RewriteMap leases (policy: no hard blocks).
+#
+# No ignoreip here. The controller's /etc/adaptive-tarpit/allowlist is the single source
+# of truth for addresses we never quarantine; ingest enforces it and reports "allowlist"
+# when a verdict names one.
+
+[DEFAULT]
+enabled              = false
+# Extension-less on purpose: fail2ban 1.0.2 resolves `banaction` as an action NAME and
+# refuses `fleet-filter.conf` with "Found no accessible config files for
+# 'action.d/fleet-filter.conf'". Measured on lab-web01; the bare name passes
+# `fail2ban-client -t`.
+banaction            = fleet-filter
+banaction_allports   = fleet-filter
+db                   = /var/lib/fail2ban/fail2ban.sqlite3
+# fail2ban's own bantime is aligned with the controller's suspect lease (900 s) so the
+# two records of the same address age at the same rate.
+bantime              = 900
+findtime             = 300
+maxretry             = 5
+
+# Scanner behaviour against the Apache access log (both vhosts log here on lab-web01:
+# ssl.conf *:443 writes this file; the port-80 test vhost logs separately and is
+# intentionally not watched, so tarpit responses never feed the detector).
+[apache-fleet-filter]
+enabled  = true
+port     = http,https
+filter   = fleet-filter
+logpath  = /var/log/httpd/access_log
+
+# PHP engine class (PHP2Shell, CVE-2026-109618/109619). The trigger is a multipart body, so no URI
+# rule and no gateway shape can see it; what the engine leaves behind is a memory-limit fatal, and
+# that only reaches a log when `log_errors = On`. Measured 2026-11-24: the official php:8.4.26-apache
+# image ships `log_errors = Off`, in which case this jail matches nothing at all. Enabling it without
+# checking that setting is a rule that looks like a control and is not one.
+#
+# findtime is longer than the scanner jail on purpose: a person who uploads something too large
+# produces the same fatal, and one that repeats for ten minutes is not a person.
+[php-fatal]
+enabled  = false
+port     = http,https
+filter   = php-fatal
+logpath  = /var/log/httpd/error_log
+findtime = 1800
+maxretry = 3
+bantime  = 900

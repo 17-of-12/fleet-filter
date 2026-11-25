@@ -1,0 +1,28 @@
+[Unit]
+# Project: Fleet-Filter (Bundle N6) - rebuild the Stage 2 gateway when its source changes.
+# This unit runs on the build host (currently build01.lab), not on the fleet targets:
+# it produces artifacts, it does not serve traffic.
+Description=fleet-filter-gateway: rebuild on source change (Bundle N6)
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/gateway/ADR-0001.md
+
+[Service]
+Type=oneshot
+User=agent
+Group=agent
+WorkingDirectory=/home/agent/projects/Fleet-Filter
+# The script decides whether a rebuild is needed from a content fingerprint of gateway/; when the
+# fingerprint matches an existing artifact it exits 0 without invoking the container runtime at all,
+# so a timer that fires hourly costs one hash on the common path.
+ExecStart=/usr/bin/bash /home/agent/projects/Fleet-Filter/bin/rebuild-gateway.sh
+# A build is CPU- and IO-heavy on a host that also runs the responder and the gateway; keep it
+# subordinate to the services whose artifacts it produces.
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+# The build writes only into the repo (dist/, data/artifacts/). Everything else stays read-only, so
+# a broken build cannot leave stray files elsewhere on the build host.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/home/agent/projects/Fleet-Filter
+TimeoutStartSec=2h

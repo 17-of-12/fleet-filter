@@ -1,0 +1,14 @@
+# Containerfile - build frameprobe (Bundle Q experiment) with the gateway's toolchain.
+#
+# Same EL8 base and pinned rustc/cargo as gateway/Containerfile and h2probe/Containerfile, so the
+# experiment's binary is produced by the compiler the ADR pins rather than whatever the host has.
+FROM docker.io/library/oraclelinux:8 AS builder
+RUN dnf -y install rust-1.92.0 cargo-1.92.0 gcc make && dnf clean all
+WORKDIR /src
+COPY Cargo.toml ./
+COPY src ./src
+RUN cargo build --release && cp target/release/frameprobe /frameprobe && rustc --version > /toolchain.txt
+
+FROM docker.io/library/oraclelinux:8 AS runtime
+COPY --from=builder /frameprobe /usr/local/bin/frameprobe
+COPY --from=builder /toolchain.txt /usr/share/frameprobe/TOOLCHAIN

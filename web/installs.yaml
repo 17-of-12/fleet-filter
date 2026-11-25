@@ -1,0 +1,73 @@
+# Fleet Filter install registry - the hosts this project owns and has deployed to.
+#
+# This file is the console's source for "what exists". It is deliberately separate from the
+# controller's own state: the controller knows about addresses on one host, this knows about hosts.
+# `stage` values are `none` (Apache present, Fleet Filter not deployed), `1` (controller +
+# responder), `2` (Rust security gateway added), `3-canary` (containerised Apache canary added),
+# or `control` (build/dev control node, not a served site).
+#
+# Ownership rule (owner ruling 2026-11-20): this registry is Fleet Filter's own. It is populated
+# from Fleet Filter deployments and owner designations, and is NOT derived from another project's
+# inventory. The 2026-11-16 revision carried 12 entries and all 12 of them existed in
+# ~/projects/ansible-estate/inventories/production/hosts.yaml - the fleet list of a different
+# project, which is not a data source this project gets. The two entries that are ours (lab-web01,
+# build01) remain in `installs:`; the ten inherited entries moved to container_inventory_exclude
+# below, which is where a host we are told about but do not own belongs.
+# Audit: ~/projects/ansible-estate/data/research/fleet-filter-inventory-coupling-2026-11-20.md
+#
+# Reachability and httpd versions for the two owned hosts come from `bin/fleet-probe.sh` runs
+# published to data/results/; update this file from those, rather than letting the console guess.
+schema_version: 1
+updated: "2026-11-20"
+# Hosts the container inventory must not probe (owner directive 2026-11-16). The project's valid
+# targets are exactly two hosts - build01.lab (control node) and lab-web01.lab
+# (test target) - and "known to some other system" is not the same claim as "ours to inspect".
+# These ten were inherited from the ansible-estate inventory while it was still being read as a
+# host source. Facts worth keeping from their deleted registry entries:
+#   estate-02.lab      - no httpd binary in PATH (verified 2026-11-15); Docker/Compose
+#                                   host, so Stage 1 would target a container, not the host.
+#   estate-09                         - workstation, no DNS entry (addressed by IP), port 80 is
+#                                   casaos-gateway, no Apache.
+#   portal01.lab   - F5-fronted web tier, httpd 2.4.62 / OpenSSL 3.5.8, mpm_event
+#                                   (owner-supplied 2026-11-15); not routable by SSH from this hub.
+#   estate-01.lab          - the fleet Wazuh manager; not an Apache host, matters to us only
+#                                   because detection depends on it.
+container_inventory_exclude:
+  - estate-02.lab
+  - bannerdb01.test.lab
+  - estate-07.lab
+  - estate-05.lab
+  - estate-05.lab
+  - estate-09
+  - portal01.lab
+  - estate-04.lab
+  - estate-03.lab
+  - estate-01.lab
+installs:
+  - fqdn: lab-web01.lab
+    # PTN-18: the console now derives proven stages from cache evidence instead of trusting this
+    # string, and the evidence says 1+2+3+4 - the Stage 4 webtree runner and its report are deployed,
+    # so the old "2+3-canary" wording understated the host. Keep the two in step.
+    stage: "2+3-canary+4"
+    deployed_at: "2026-11-12"
+    ssh_user: agent
+    state_db: /var/lib/adaptive-tarpit/state.db
+    audit_log: /var/log/adaptive-tarpit/audit.jsonl
+    webtree_report: /var/lib/fleet-filter/webtree-report.json
+    quarantine_journal: /var/lib/fleet-filter/quarantine.json
+    artifact_sha256: 64e1b5f3fbb8f8891990b4ed76da3941ccef89be77dcd20f464cb1635e1a2447
+    # PTN-13: what the Stage 2 gateway does with a request it has already classified. `inline`
+    # answers locally; `proxy` forwards the request anyway and is a testing choice, so the
+    # console has to be able to tell the two apart instead of reporting both as "healthy".
+    gateway_policy_mode: inline
+    notes: "Reference deployment: stage 1 controller + Python responder, stage 2 Rust gateway, stage 3 Podman Apache canary, stage 4 webtree audit runner + Wazuh syscheck."
+  - fqdn: build01.lab
+    stage: control
+    deployed_at: "2026-11-12"
+    ssh_user: agent
+    state_db: ""
+    audit_log: ""
+    webtree_report: /var/lib/fleet-filter/webtree-report.json
+    quarantine_journal: /var/lib/fleet-filter/quarantine.json
+    artifact_sha256: 0a3173a92bad7d1ced67dab1b5e19a9d1d1c3ecaa33a72bc4ff07a2d59343b0b
+    notes: "Control node: repo home, gateway build host (N6 rebuild timer), and host of this console."

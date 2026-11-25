@@ -1,0 +1,32 @@
+[Unit]
+# Project: Fleet-Filter - container image retention on the build host.
+# Runs on the build host (currently build01.lab). The rebuild timer (N6) produces an
+# artifact every time gateway/ changes, and each build leaves layers behind: superseded tags plus a
+# ~1.1 GB Rust builder-stage image. Nothing failed until the root filesystem reached 88%, which is
+# the usual point at which a build host notices it has no retention policy.
+Description=fleet-filter: remove superseded container images on the build host
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/gateway/ADR-0001.md
+
+[Service]
+Type=oneshot
+User=agent
+Group=agent
+WorkingDirectory=/home/agent/projects/Fleet-Filter
+# The tool defaults to a dry run, so an accidental manual start changes nothing; the timer passes
+# --apply explicitly. Only the rootless store is touched by default - the root podman store and
+# Docker's store on this host hold other projects' images (frameprobe, h2probe, Semaphore, Postgres,
+# Nagios) and the owner rule says this project does not touch those.
+ExecStart=/usr/bin/python3.9 /home/agent/projects/Fleet-Filter/bin/prune-build-host.py --apply
+# Deliberately *not* NoNewPrivileges=yes: rootless podman resolves user namespaces through setuid
+# helpers (newuidmap/newgidmap), and the same sandbox that turned a missing file into a sudo failure
+# in the UI sync unit (PTN-18) would make `podman rmi` fail here. The unit runs the same command an
+# operator would run interactively, with the same privileges.
+PrivateTmp=yes
+ProtectSystem=strict
+# Image removal happens inside the container storage graph, not the repo; /home/agent is writable so
+# both the store and any tool state remain reachable, matching the rebuild unit's write surface.
+ReadWritePaths=/home/agent
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=30min

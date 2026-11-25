@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+.venv/
+.venv-*/
+.cache/
+*.orig
+*.rej
+
+# Build output. Target directories and release binaries are produced by bin/, not committed:
+# a stale binary in the tree is indistinguishable from a current one, and the two prior
+# accidents (an 81 MB dist/ and a 36 MB tmp/*/target/) were both tracked build output.
+gateway/target/
+*/target/
+dist/
+tmp/
+scanner/build/
+
+# Local development stack (bin/local-stack.sh): runtime state, logs, pids and the fake site's
+# docroot all live here, so a checkout never writes outside its own tree.
+var/
+.playwright-mcp/
+
+# Harvested credentials and private keys: copied out of the tree on purpose (bin/harvest-host-state.sh).
+secrets/
+
+# Runtime caches and tool logs produced while running the pipeline locally.
+data/cache/
+toolkit.log

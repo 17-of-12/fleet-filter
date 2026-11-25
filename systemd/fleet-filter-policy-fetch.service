@@ -1,0 +1,28 @@
+# Pull this host's policy from the control node and apply it.
+#
+# Pull, not push: the hosts that matter sit behind a load balancer or on networks with no inbound
+# path from the control node. Outbound SSH is the only direction guaranteed to exist, and a host that
+# fetches its own file validates it before installing - a compromised control node can publish a bad
+# policy, but it cannot make a host skip the parser.
+#
+# The wrapper installs atomically, reloads, and waits for the journal to confirm the new version is
+# in force; if it is not, it restores the previous policy and fails the unit.
+[Unit]
+Description=Fetch and apply the filter gateway policy
+Documentation=file:/usr/local/share/doc/fleet-filter/POLICY-DISTRIBUTION.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/fleet-filter/policy-fetch.env
+# Authenticity: the digest arrives from the same host as the policy, so the host verifies a
+# detached signature over it with a key installed here out of band, at provisioning time. Without
+# that key the fetch refuses to install rather than accepting an unauthenticated bundle.
+ExecStart=/usr/local/sbin/fleet-filter-policy-fetch \
+    --signing-key /etc/fleet-filter/policy-signing.pub
+Nice=10
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

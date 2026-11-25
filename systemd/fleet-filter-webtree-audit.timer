@@ -1,0 +1,19 @@
+# /etc/systemd/system/fleet-filter-webtree-audit.timer
+# Project: Fleet-Filter (Bundle Z, Stage 4) - hourly audit cadence for the webtree scanner.
+#
+# Cadence follows the owner's rule of 2026-11-16: "keep the scanning down to new file creation ...
+# maybe a full scan once every X and then new file scans." The interval is enforced by the scanner
+# itself (`--full-every-hours`, default 168 h), so this timer only decides how often the incremental
+# check runs. Hourly keeps a dropped webshell visible within an hour at a cost of ~7 s per host.
+[Unit]
+Description=fleet-filter: run the webtree audit hourly (Bundle Z: new files, weekly full rescan)
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/CONSOLE.md
+
+[Timer]
+OnBootSec=5min
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

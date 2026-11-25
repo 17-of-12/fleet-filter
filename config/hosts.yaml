@@ -1,0 +1,23 @@
+# The hosts that receive a policy, and which topology each one is.
+#
+# This table is the input to bin/publish-policies.py. A host removed here stops being published, so
+# the publish directory cannot accumulate stale policies that look current to whoever fetches next.
+#
+# Each entry's fields are exactly the arguments bin/render-topology.py takes, which keeps one place
+# where the shape of a deployment is written down. `topology` decides whether TLS, trusted proxies
+# and h2 are in the policy - see deploy/topologies/README.md.
+hosts:
+  - name: ff-apache01
+    site: ff-apache01.lab
+    topology: edge-tls
+    bind: "0.0.0.0:8443"
+    backend: "http://10.20.0.225:8080"
+    cert: /etc/fleet-filter/tls/ff-apache01.crt
+    key: /etc/fleet-filter/tls/ff-apache01.key
+
+  - name: ff-apache02
+    site: ff-apache02.lab
+    topology: behind-lb-plain
+    bind: "0.0.0.0:8081"
+    backend: "http://127.0.0.1:8091"
+    trusted_proxies: ["10.20.0.0/24"]

@@ -1,0 +1,66 @@
+# Project-owned Stage 4 scanner image configuration (Bundle Z) - one file, every pin.
+#
+# Everything the scanner image is built from is recorded here with a version and a digest or hash,
+# because the image is the artifact that reaches every web host: "we built it from upstream" is only
+# an answer if the exact input is written down. bin/build-scanner.sh reads this file; the
+# Containerfile's ARG defaults mirror it and the build re-verifies the hashes, so the file cannot
+# silently disagree with what was built.
+
+image:
+  # Published to the local registry built on build01 (no public registry, owner directive 2026-11-16).
+  registry: build01.lab:5000
+  repository: fleet-filter/scanner
+  version: 0.1.0
+  # Also tagged locally as localhost/fleet-filter-scanner:<version>-<git-sha> so a host can run the
+  # image by a name that does not depend on the registry being reachable.
+  local_repository: localhost/fleet-filter-scanner
+  # Pinned by digest, not tag. Same base digest as container/config.yaml so the base layer is stored
+  # once per host across the gateway, Apache, and scanner images.
+  base_image: docker.io/library/oraclelinux
+  base_image_digest: sha256:9225108d00fb6611ebc4a5eced166f27d9dcfeaa539fb127be79425f0da5e745
+  base_image_tag: oraclelinux:8
+
+tools:
+  # yara is compiled from the upstream release tarball inside the image's builder stage. The distro
+  # packages (ol8 4.2.3, ol9 4.5.2) were rejected: stale relative to upstream, and installing them
+  # on a web host adds packages that belong to the scanner, not to the host.
+  yara:
+    version: 4.6.0
+    url: https://github.com/VirusTotal/yara/archive/refs/tags/v4.6.0.tar.gz
+    sha256: 61ab80084e3f83e1b73a95057058e2ae1db5f87f291e32654e191d410297f0e5
+    fetched: "2026-11-16"
+  # gitleaks is copied as a static binary out of the digest-pinned upstream image (never rebuilt), so
+  # its provenance stays the upstream release. Secret detection in web content is a real finding class
+  # for a webtree audit (a dropped file that leaks a key is a different fix than a dropped shell).
+  gitleaks:
+    version: v8.30.1
+    image: docker.io/zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+    fetched: "2026-11-16"
+  # The interpreter comes from the pinned base release (python3 = 3.6 on OL8). bin/webtree-audit.py is
+  # stdlib-only and targets 3.6+, so no vendored interpreter and no second Python on the host.
+  python: base-image-provided
+
+# Detection content that ships inside the image (also kept in the repo so it is reviewable).
+ruleset: rules/fleet-filter.yar
+# Z5 false-positive control: the default suppression set baked into the image so a host that
+# configures nothing still stops reporting dependency trees. A host overrides it by mounting
+# /etc/fleet-filter/webtree-allowlist, which bin/webtree-scan-host.sh prefers over this file.
+allowlist: allowlist/default.allowlist
+
+# Analyzer defaults baked into the image's own copy of the script.
+scan:
+  review_score: 5
+  quarantine_score: 10
+  max_file_bytes: 1048576      # 1 MiB per file: shape is visible in the head, bounds cost on assets
+  full_every_hours: 168        # owner rule: new/changed files routinely, full rescan weekly
+  state_file: .webtree-audit.state.json
+
+# How the container is meant to be run on a host. `none` is the point: a file audit needs no network,
+# and a scanner that needs network egress from every web host is a bigger attack surface than the
+# finding it produces. Active probes (TLS, HTTP) run centrally from build01 instead.
+runtime:
+  network: none
+  read_only_mounts:
+    - /var/www/html
+  state_path: /var/lib/fleet-filter/webtree-state.json
+  memory_limit: 128m

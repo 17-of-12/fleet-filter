@@ -1,0 +1,36 @@
+# Vulnerable Apache lab image - one Containerfile, the version selected at build time.
+#
+# Purpose
+# -------
+# The project defends a specific httpd; a signature is a guess until it has been fired at the
+# version it claims to cover. These images exist so a CVE can be reproduced on demand, on hosts the
+# project owns, with the exact version the advisory names - not "latest" and not a fixture that only
+# resembles the real thing.
+#
+# Build args:
+#   HTTPD_VERSION  2.4.66 (CVE-2026-23918), 2.4.62 (CVE-2026-119618 range), 2.4.49 (CVE-2021-41773)
+#
+# What it deliberately does not do: run as non-root, drop capabilities, or harden anything. It is a
+# victim, not a service, and it lives on a host that is only reachable from the project's own lab
+# network.
+#
+# Build:
+#   sudo podman build --build-arg HTTPD_VERSION=2.4.66 -t ff-httpd:2.4.66 .
+# Run (each host publishes 8080 h2c + 8443 TLS/h2):
+#   sudo podman run -d --name ff-httpd --network host -v /var/lib/ff-httpd:/state:Z ff-httpd:2.4.66
+ARG HTTPD_VERSION=2.4.66
+FROM docker.io/library/httpd:${HTTPD_VERSION}
+
+# No package installs: 2.4.49 ships on archived Debian buster, whose apt repos no longer resolve
+# (`buster-updates` has no Release file), and depending on a network package fetch would make the
+# victim's build fail for a reason that has nothing to do with the CVE. The TLS identity is
+# generated on the host and mounted, so the image needs no openssl of its own.
+
+COPY conf/httpd.conf /usr/local/apache2/conf/httpd.conf
+COPY site/ /usr/local/apache2/htdocs/
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod 0755 /usr/local/bin/start.sh && mkdir -p /usr/local/apache2/cgi-bin /state /state/log
+
+# 8080 = cleartext h2c + http/1.1, 8443 = TLS with ALPN h2
+EXPOSE 8080 8443
+ENTRYPOINT ["/usr/local/bin/start.sh"]

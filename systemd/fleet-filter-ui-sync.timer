@@ -1,0 +1,19 @@
+[Unit]
+# Fires fleet-filter-ui-sync.service. The console renders its data from a cached SQLite file, and
+# before this timer existed the cache only moved when someone ran web/sync.py by hand - the 2026-11-16
+# visual audit found it 8h34m stale while every number in it was still correct, which is the failure
+# mode a correct-but-stale dashboard has.
+Description=Refresh the Fleet Filter fleet console cache every 15 minutes
+
+[Timer]
+# 15 minutes, not 1 minute: a sweep opens one SSH session per registered host (8 s timeout each for
+# the ones that do not answer), and the console's own staleness warning only turns amber after an
+# hour. Anything faster spends SSH capacity for a number nobody reads more often than once an hour.
+OnBootSec=2min
+OnUnitActiveSec=15min
+# Jitter so a reboot or a fleet-wide change does not put every build01 timer on the same tick.
+RandomizedDelaySec=90
+Unit=fleet-filter-ui-sync.service
+
+[Install]
+WantedBy=timers.target

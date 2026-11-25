@@ -1,0 +1,14 @@
+# Python development dependencies for Fleet-Filter (operating rule 15).
+#
+# Why this file exists: the controller and responder are executed by system interpreters on the
+# fleet (Python 3.6.8 and 3.9 on lab-web01, measured), but development and testing on this host
+# must not `pip install` into the system interpreter - that breaks OS tooling that imports the
+# same modules and cannot be rolled back cleanly. Everything dev-side is installed into `.venv`.
+#
+#   python3.12 -m venv .venv
+#   .venv/bin/pip install -r requirements-dev.txt
+#
+# Versions are pinned so a later session reproduces the same parser and linter behaviour instead of
+# discovering that a minor release changed a rendered rule or a lint verdict.
+PyYAML==6.0.3
+ruff==0.16.0

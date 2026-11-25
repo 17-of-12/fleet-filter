@@ -1,0 +1,21 @@
+{
+  "question": "does inspecting the body catch PHP2Shell chain A",
+  "without_marker": {
+    "endpoint": "127.0.0.1:8740 (same backend, no body_markers)",
+    "result": "RCE CONFIRMED: uid=33(www-data) gid=33(www-data) groups=33(www-data)",
+    "evidence": "data/lab/poc-runs/PHP2SHELL-*/chain-a-through-gateway.txt"
+  },
+  "with_marker": {
+    "endpoint": "127.0.0.1:8762 (backend 10.20.0.226:8091, body_markers=[PHP_SESSION_UPLOAD_PROGRESS])",
+    "control": "ordinary POST a=1&b=2 -> HTTP/1.1 200, no deception (proxied normally)",
+    "attack": "plant request -> 404 deception, detection peer=127.0.0.1 claim=body:PHP_SESSION_UPLOAD_PROGRESS spool=written; LFI -> 403 (source quarantined, no session file); 'RCE not confirmed'",
+    "detections": 3
+  },
+  "why_it_works": "the gateway already buffers the body up to max_body_bytes (Limited::collect in proxy_request), so the marker check is a byte search over memory it already holds - not a new buffering architecture. Measured marker offset in the 514-byte chain A body: 332.",
+  "not_covered": [
+    "chain D: nested-field OOM with a body under 8 MB and no upload-progress field - no marker to find",
+    "an attacker who varies the field name case or encoding; the marker match is an exact byte search",
+    "the 200 MB no-length variant is stopped earlier, by the 8 MB body cap (measured: PHP fatal count unchanged)"
+  ],
+  "caveat": "this is a stop for the published chain A, not for the class"
+}

@@ -1,0 +1,72 @@
+name: checks
+
+# The same gate a human runs, run by a machine. `bin/check.sh --all` is the project's single
+# static-feedback entry point, so CI calls it rather than reimplementing its steps: two definitions
+# of "the checks pass" is how a green badge and a red tree coexist.
+#
+# Pinned toolchain: ADR-0001 fixes rustc/cargo/rustfmt/clippy at 1.92.0. A floating stable turns a
+# new lint into a red build that has nothing to do with the change under review.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly, so a dependency or toolchain change upstream is noticed without a commit.
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install the pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@1.92.0
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache the cargo target directory
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fleet-filter-gateway/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('gateway/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the development virtualenv
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements-dev.txt
+
+      - name: Run the gate
+        # Two interpreters, matching the deployed one: the controller runs on older system Pythons,
+        # and a construct that is fine on 3.12 can fail there. The second interpreter is the one the
+        # runner image provides, which is the closest available stand-in in CI.
+        run: PYTHONS="$PWD/.venv/bin/python /usr/bin/python3" TIMEOUT=600 bin/check.sh --all
+
+      - name: Refuse a tree that only passes with a dirty working copy
+        # The gate builds and runs; it must not leave tracked files modified. A formatter that ran
+        # and was not committed would otherwise make every later run green for the wrong reason.
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "the gate modified tracked files:"
+            git status --porcelain
+            git diff
+            exit 1
+          fi

@@ -1,0 +1,35 @@
+name: Coverage gap
+description: A signature fired but the exploit still worked, or an exploit has no signature
+labels: ["corpus", "coverage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful kind of report. If you can, include a recorded run: the request that
+        works without the control, the same request through it, and a benign request beside both.
+  - type: input
+    id: cve
+    attributes:
+      label: CVE or exploit name
+      placeholder: CVE-2026-12345
+    validations:
+      required: true
+  - type: textarea
+    id: victim
+    attributes:
+      label: Affected software and version
+      description: The exact version matters - a rule tested against the wrong version proves nothing.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What you observed
+      description: Was the exploit effective without the control? Through it? Paste the evidence, not a summary.
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: Request shape, if you extracted one
+      render: text

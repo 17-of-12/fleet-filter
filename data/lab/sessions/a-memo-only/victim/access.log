@@ -1,0 +1,6 @@
+10.20.1.148 - - [24/Nov/2026:14:58:49 +0000] "GET / HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8443 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:14:58:49 +0000] "GET /index.html HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8443 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:14:58:49 +0000] "GET /nope-404 HTTP/1.1" 404 286 "-" "curl/8.18.0" ct=- cl=- ho=127.0.0.1:8443 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:14:58:57 +0000] "POST /.env HTTP/1.1" 404 286 "-" "curl/8.18.0" ct=- cl=- ho=127.0.0.1:8443 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:14:58:57 +0000] "GET / HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8443 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:14:59:03 +0000] "GET / HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8443 proto=HTTP/1.1

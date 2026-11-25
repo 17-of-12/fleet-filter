@@ -1,0 +1,54 @@
+{
+  "differing_rows": {
+    "1": "CVE-2021-41773 encoded traversal: the signature A/B target",
+    "2": "CVE-2021-42013 double-encoded traversal",
+    "3": "traversal to /bin/sh, the RCE shape",
+    "4": "control: a probe with no signature in the store"
+  },
+  "recorded_at": "2026-11-24T17:22:45Z",
+  "session": "/home/user/projects/fleet-filter/data/lab/sessions/ab-baseline",
+  "variants": {
+    "baseline": {
+      "policy": "/home/user/projects/fleet-filter/var/lab-gw/policy-baseline.toml",
+      "rows": {
+        "1": "500/none",
+        "10": "403/generic",
+        "11": "200/none",
+        "12": "None/none",
+        "13": "404/exploit-probe",
+        "14": "403/generic",
+        "15": "200/none",
+        "2": "404/none",
+        "3": "200/none",
+        "4": "404/none",
+        "5": "200/none",
+        "6": "200/none",
+        "7": "404/none",
+        "8": "404/exploit-probe",
+        "9": "404/exploit-probe"
+      },
+      "sessions": "/home/user/projects/fleet-filter/data/lab/sessions/ab-baseline-replay-20261124T172205Z"
+    },
+    "with-traversal": {
+      "policy": "/home/user/projects/fleet-filter/var/lab-gw/policy-traversal.toml",
+      "rows": {
+        "1": "404/exploit-probe",
+        "10": "403/generic",
+        "11": "200/none",
+        "12": "None/none",
+        "13": "404/exploit-probe",
+        "14": "403/generic",
+        "15": "200/none",
+        "2": "404/exploit-probe",
+        "3": "404/exploit-probe",
+        "4": "403/generic",
+        "5": "200/none",
+        "6": "200/none",
+        "7": "404/none",
+        "8": "404/exploit-probe",
+        "9": "404/exploit-probe"
+      },
+      "sessions": "/home/user/projects/fleet-filter/data/lab/sessions/ab-baseline-replay-20261124T172220Z"
+    }
+  }
+}

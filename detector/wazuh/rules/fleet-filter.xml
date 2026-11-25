@@ -1,0 +1,125 @@
+<!--
+  Fleet-Filter - Wazuh ruleset contribution (Phase 2 of docs/WAZUH-ASK.md)
+
+  Status: DRAFT for the Wazuh administrator's review. Nothing here is installed anywhere yet.
+
+  Design notes (see docs/DETECTION-INPUTS.md section 5 and docs/FLEET-STATE.md):
+    * These are deliberately FEW and SUMMARY-LEVEL. Wazuh already alerts on every
+      accepted web request (stock rule 30101 family). Binding an active response to
+      that rule would spawn a process per request. We want the opposite: a handful of
+      correlation rules that fire once per behaviour, then hand us the verdict.
+    * Everything is under its own group `fleet-filter,` so the active-response command
+      can be bound to the group without touching any other rule.
+    * Rule ids are taken from 120000-120099. If that range is taken on the manager,
+      renumber - the ids are referenced by the command's <rules> block, not by name.
+      Renumbering also has to be mirrored in the controller: `adaptive-tarpit ingest`
+      only grants a `confirmed` verdict to rule ids listed in DEFAULT_CONFIRM_RULES
+      (currently 120006 and 120007) or passed with the confirm-rule flag.
+    * `if_group` is an ATTRIBUTE of <rule> in Wazuh 4.x (see the ruleset XML syntax
+      reference). The <if_group> child element is the ossec v2 form; do not "fix" these
+      rules into the child-element form, and note that a rule may carry both
+      `if_group="..."` and additional <group> children.
+    * Group names must match what the manager's stock rulesets actually emit, not what
+      the docs call them in prose. Verified against a live alert from estate-01 for an
+      Apache access-log hit: groups were ["web", "accesslog", "web_scan", "recon"], so
+      the correct names are `accesslog` (not `web-accesslog`) and
+      `authentication_failed` (not `authentication-failed`). A wrong group name never
+      matches, and the rule silently never fires.
+    * The `confirmed` vs `suspect` decision is NOT made here. The controller derives it
+      from the rule level (>= 12 => confirmed / 24h, otherwise suspect / 15m ladder),
+      so level values here are the tuning surface. Keep behavioural rules below 12
+      unless they are unambiguous.
+    * Anything that needs the extended Apache log fields (ct= / cl= / ho=) additionally
+      requires decoders/fleet-filter.xml to be installed; without that decoder those
+      rules will never match, and the stock combined-format decoder is what produces
+      the fields the other rules use.
+-->
+<group name="fleet-filter,">
+
+  <!-- 120001: request-rate scan behaviour. One source hitting this host far faster
+       than a human or a monitoring poller would. -->
+  <rule id="120001" level="6" frequency="20" timeframe="60" if_group="accesslog">
+    <same_source_ip />
+    <description>Fleet-Filter: 20 web requests in 60s from one source</description>
+    <group>scan,</group>
+  </rule>
+
+  <!-- 120002: 404 burst - the classic content-discovery sweep.
+       NOTE: depends on the Apache decoder exposing the response status as data.status
+       on access-log alerts for this manager version. If it does not, this rule can
+       never match and should be dropped in favour of 120001. -->
+  <rule id="120002" level="6" frequency="15" timeframe="300" if_group="accesslog">
+    <field name="data.status">^404$</field>
+    <same_source_ip />
+    <description>Fleet-Filter: 15 not-found responses in 300s from one source</description>
+    <group>scan,</group>
+  </rule>
+
+  <!-- 120003: known exploit-probe paths. This is the Wazuh-side mirror of the paths
+       list in controller/signatures/signatures.yaml, expressed as a URL regex so it
+       works with the stock decoder. -->
+  <rule id="120003" level="7" if_group="accesslog">
+    <field name="url" type="pcre2">(?i)^/(\.env|wp-login\.php|wp-admin/|phpmyadmin/|pma/|administrator/|\.git/|\.aws/|cgi-bin/\.well-known|actuator/env|solr/|xmlrpc\.php)(/|\?|$)</field>
+    <description>Fleet-Filter: exploit probe path requested</description>
+    <group>exploit_attempt,</group>
+  </rule>
+
+  <!-- 120004: auth brute force, web-facing. Stock rules already cover SSH (57xx);
+       this exists so a web-origin auth failure burst is attributable to the group
+       the tarpit command is bound to. Level 7 keeps it in the suspect ladder. -->
+  <rule id="120004" level="7" frequency="5" timeframe="600" if_group="authentication_failed">
+    <same_source_ip />
+    <description>Fleet-Filter: 5 auth failures in 600s from one source</description>
+    <group>brute_force,</group>
+  </rule>
+
+  <!-- 120005: repeat offender. A source that trips the scan rule three times in an
+       hour. This is the escalation rung that, per project policy, stays a tarpit
+       rather than becoming a firewall drop. -->
+  <rule id="120005" level="8" frequency="3" timeframe="3600" if_group="fleet-filter">
+    <same_source_ip />
+    <description>Fleet-Filter: source tripped Fleet-Filter rules 3 times in 1h</description>
+    <group>escalation,</group>
+  </rule>
+
+  <!-- 120006: confirmed exploit signature reported by the Apache-side controller.
+       Only fires if the controller's own audit log is added as a log source on the
+       agent (see docs/DETECTION-INPUTS.md section 3, Tier 1). Level 12 => the
+       controller treats it as confirmed and issues the 24h lease. -->
+  <rule id="120006" level="12" if_group="fleet-filter">
+    <field name="data.srcip" type="pcre2">^\d{1,3}(\.\d{1,3}){3}$</field>
+    <description>Fleet-Filter: confirmed exploit signature from the Apache controller</description>
+    <group>exploit_attempt,</group>
+  </rule>
+
+  <!-- 120007 (K5): the CVE-2026-119618 `bodyless_ct` request shape - a GET carrying a
+       Content-Type with no body. Measured rather than guessed:
+       data/research/signature-shape-census-2026-11-14.md found 12 such requests in 3,813
+       logged requests and every one of them came from the PoC address, while the 3,638
+       ordinary requests never produced the shape (a normal GET sends no Content-Type).
+       Level 12 => confirmed, matching the owner's rule that an exploit-shaped request needs
+       no threshold; it is also listed in the controller's DEFAULT_CONFIRM_RULES so the
+       ingest path grants the 24h lease instead of downgrading it to suspect.
+       Requires decoders/fleet-filter.xml: the stock apache decoder does not expose
+       content_type / content_length, so without it this rule can never match. -->
+  <rule id="120007" level="12" if_group="accesslog">
+    <field name="method">^GET$</field>
+    <field name="content_type" type="pcre2">^(?!-).+$</field>
+    <field name="content_length" type="pcre2">^(-|0)$</field>
+    <description>Fleet-Filter: body-less GET with a Content-Type (CVE-2026-119618 request shape)</description>
+    <group>exploit_attempt,</group>
+  </rule>
+
+  <!-- 120008 (K5): HTTP/2 seen from a source the controller has not classified. On this
+       vhost 119 of 120 HTTP/2 requests came from one address while 3,638 HTTP/1.1 requests
+       came from 22, so h2 traffic is strongly correlated with a scripted client but is a
+       protocol observation, not a CVE fact - real HTTP/2 clients exist. Deliberately level 6
+       (suspect, 15m) so it can never quarantine on protocol alone; the signature store keeps
+       the same judgement as the corroborating signal `h2_on_http1_vhost`. -->
+  <rule id="120008" level="6" if_group="accesslog">
+    <field name="protocol" type="pcre2">^HTTP/2</field>
+    <description>Fleet-Filter: HTTP/2 request observed on a vhost whose traffic is HTTP/1.1</description>
+    <group>scan,</group>
+  </rule>
+
+</group>

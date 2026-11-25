@@ -1,0 +1,49 @@
+# Renewal for the gateway's TLS certificate.
+#
+# Why an external ACME client instead of ACME inside the gateway:
+#   * the challenge modes depend on the estate, not on the proxy - HTTP-01 needs :80, DNS-01 needs
+#     credentials for Technitium or whatever answers for the zone, and a wildcard needs DNS-01 no
+#     matter what. Putting that inside a network-facing Rust process means carrying an ACME client,
+#     its renewal schedule and its credential handling in the same process that parses attacker
+#     input;
+#   * `certbot renew` is a no-op unless something is due, so the timer costs one process per day;
+#   * the handover is the part that can go wrong, and it is handled by the deploy hook, which is
+#     client-agnostic. Replacing certbot with acme.sh or lego later does not touch the gateway.
+#
+# The deploy hook installs the material where the policy says the gateway reads it, signals a
+# reload, and then reads the served certificate back to prove the new one is in service. See
+# bin/gateway-cert-deploy.sh for why each of those steps exists.
+#
+# Configuration lives in /etc/fleet-filter-gateway/cert.conf:
+#
+#   CERT_HOST=lab-web01.lab
+#   POLICY=/etc/fleet-filter-gateway/policy.toml
+#   GATEWAY_UNIT=fleet-filter-gateway
+#   GATEWAY_USER=fleet-filter-gw
+#   GATEWAY_GROUP=fleet-filter-gw
+#
+# Issuance is a separate, one-time command (certbot certonly), so this unit only ever renews. A
+# renewal timer that would also issue on first run can turn a typo in a domain name into a rate-limit
+# ban at the CA.
+[Unit]
+Description=Renew and deploy the gateway TLS certificate
+Documentation=file:/usr/local/share/doc/fleet-filter/CERTIFICATES.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/fleet-filter-gateway/cert.conf
+ExecStart=/usr/bin/certbot renew --quiet \
+    --deploy-hook "/usr/local/sbin/fleet-filter-cert-deploy \
+        --policy ${POLICY} \
+        --unit ${GATEWAY_UNIT} \
+        --user ${GATEWAY_USER} \
+        --group ${GATEWAY_GROUP} \
+        --expect-host ${CERT_HOST}"
+# A renewal that fails should be visible as a failed unit, not just a line in certbot's log.
+Nice=10
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

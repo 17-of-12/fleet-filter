@@ -1,0 +1,9 @@
+10.20.1.148 - - [24/Nov/2026:17:22:05 +0000] "GET /cgi-bin/.%2e/.%2e/.%2e/.%2e/etc/passwd HTTP/1.1" 500 621 "-" "curl/8.18.0" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:05 +0000] "GET /cgi-bin/%%32%65%%32%65/%%32%65%%32%65/etc/passwd HTTP/1.1" 404 286 "-" "curl/8.18.0" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:05 +0000] "POST /cgi-bin/.%2e/.%2e/.%2e/.%2e/bin/sh HTTP/1.1" 200 45 "-" "curl/8.18.0" ct=application/x-www-form-urlencoded cl=39 ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:06 +0000] "GET /.env HTTP/1.1" 404 286 "-" "curl/8.18.0" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:06 +0000] "GET / HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:06 +0000] "GET /index.html HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:06 +0000] "GET /nope-404 HTTP/1.1" 404 286 "-" "curl/8.18.0" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:14 +0000] "GET / HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1
+10.20.1.148 - - [24/Nov/2026:17:22:19 +0000] "GET / HTTP/1.1" 200 276 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" ct=- cl=- ho=127.0.0.1:8500 proto=HTTP/1.1

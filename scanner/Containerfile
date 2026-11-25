@@ -1,0 +1,93 @@
+# syntax=docker/dockerfile:1
+# Fleet Filter Stage 4 scanner image - the fourth layer on a web VM (Bundle Z).
+#
+# Ownership and provenance, because "where did this binary come from" is the whole question:
+#   * base image    oraclelinux:8, pinned by digest (the same digest container/config.yaml records,
+#                   so a host running the gateway image and the scanner image stores the 259 MB base
+#                   layer once instead of twice).
+#   * yara          compiled from the upstream VirusTotal release tarball, version and sha256 both
+#                   pinned and both verified (ARG default and an in-build `sha256sum -c`). The distro
+#                   packages were rejected by the owner: ol8 ships 4.2.3 and ol9 ships 4.5.2 while
+#                   upstream is 4.6.0, and nobody wants a source tree sitting in a web host's
+#                   filesystem. Building it here keeps the source inside a build stage that the
+#                   runtime stage throws away.
+#   * gitleaks      the upstream static binary, copied out of the digest-pinned upstream image
+#                   rather than rebuilt, so its provenance is the upstream release itself.
+#   * our code      bin/webtree-audit.py and scanner/rules/, staged in by bin/build-scanner.sh.
+#
+# tlsx and the other active-probe tools are deliberately absent: this container runs with
+# --network=none, and a TLS or HTTP prober inside a network-isolated container can only ever see
+# itself. Those probes run centrally from build01 (bin/webtree-scan.py, bin/ciphersuite-probe).
+
+ARG BASE_IMAGE=docker.io/library/oraclelinux:8@sha256:9225108d00fb6611ebc4a5eced166f27d9dcfeaa539fb127be79425f0da5e745
+# Declared with the other global ARGs: an ARG placed inside a stage cannot be used in a later stage's
+# FROM line, which is what made the first build of this file fail with "no FROM statement found".
+ARG GITLEAKS_IMAGE=docker.io/zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+
+# ---------------------------------------------------------------- builder: compile yara from source
+FROM ${BASE_IMAGE} AS yara-builder
+ARG YARA_VERSION=4.6.0
+ARG YARA_TARBALL_SHA256=61ab80084e3f83e1b73a95057058e2ae1db5f87f291e32654e191d410297f0e5
+
+RUN dnf -y install --setopt=install_weak_deps=False \
+        gcc make autoconf automake libtool pkgconfig \
+        openssl-devel jansson-devel zlib-devel \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# Fixed name: the build script stages the verified tarball at this path, and build-arg expansion in
+# a COPY source is not portable across buildah versions, so the name is not parameterised.
+COPY yara.tar.gz /tmp/yara.tar.gz
+
+# The checksum is verified inside the build, not only by the script that fetched the tarball, so a
+# hand-run `podman build` cannot silently use a different yara than the one config.yaml records.
+# `--disable-magic` is deliberate: OL8 has no `file-devel` package (the build found this the hard
+# way), and yara's magic module duplicates a check bin/webtree-audit.py already does in pure Python.
+# The other modules - strings, hex, regex, file-size, and the hash set - are all built.
+RUN set -eux; \
+    echo "${YARA_TARBALL_SHA256}  /tmp/yara.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/yara.tar.gz -C /tmp; \
+    cd "/tmp/yara-${YARA_VERSION}"; \
+    ./bootstrap.sh; \
+    ./configure --prefix=/usr --libdir=/usr/lib64 --enable-static --disable-shared --disable-magic \
+        CFLAGS="-O2"; \
+    make -j"$(nproc)"; \
+    make install; \
+    /usr/bin/yara --version
+
+# ---------------------------------------------------------------- builder: upstream gitleaks binary
+FROM ${GITLEAKS_IMAGE} AS gitleaks
+
+# ---------------------------------------------------------------- runtime
+FROM ${BASE_IMAGE} AS runtime
+LABEL io.fleet-filter.component="stage4-scanner" \
+      io.fleet-filter.repository="https://github.com/dswhite66/Fleet-Filter"
+
+# python3 comes from the pinned base release (3.6 on OL8); bin/webtree-audit.py targets 3.6+, so no
+# interpreter is vendored and nothing on the host gains a second Python. openssl-libs and zlib are the
+# only libraries the statically-linked yara still needs at runtime; jansson's runtime package is named
+# `jansson` on the RHEL family (not `jansson-libs`) and is unnecessary here because libyara was linked
+# statically in the builder stage.
+RUN dnf -y install --setopt=install_weak_deps=False \
+        python3 openssl-libs zlib \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+COPY --from=yara-builder /usr/bin/yara /usr/bin/yara
+# yarac ships alongside yara and is what validates a ruleset (`yara -c` does not exist in 4.x), so the
+# image that ships a ruleset also ships the tool that proves the ruleset is loadable.
+COPY --from=yara-builder /usr/bin/yarac /usr/bin/yarac
+COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks
+COPY webtree-audit.py /opt/fleet-filter/webtree-audit.py
+COPY rules/ /opt/fleet-filter/rules/
+# The default suppression set (Z5) ships with the analyzer so a host that configures nothing still
+# stops reporting Composer dependencies as quarantined. A host can override it by bind-mounting
+# /etc/fleet-filter/webtree-allowlist, which bin/webtree-scan-host.sh prefers when present.
+COPY allowlist/ /opt/fleet-filter/allowlist/
+COPY config.yaml /opt/fleet-filter/config.yaml
+COPY fixtures/ /opt/fleet-filter/fixtures/
+RUN chmod 0755 /opt/fleet-filter/webtree-audit.py /usr/bin/yara /usr/bin/yarac /usr/local/bin/gitleaks
+
+WORKDIR /opt/fleet-filter
+ENTRYPOINT ["/opt/fleet-filter/webtree-audit.py"]
+CMD ["--help"]

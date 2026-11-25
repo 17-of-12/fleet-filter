@@ -1,0 +1,9 @@
+probe-tarpit-gateway 0.1.0 listening on 127.0.0.1:8762 [cleartext]
+policy version=lab-php-body mode=serve posture=standard bind=127.0.0.1:8762 backend=http://10.20.0.226:8091 tls=no alpn=http/1.1 on_quarantined=inline deception=inline(detected=exploit-probe,quarantined=generic,drips=32) sha256=42eb3d1f2b9efedd9c103997190cb3953f4502daf9adb80edbb22d7b197370bc
+classify detection=////wp-json/batch/v1,///wp-json/batch/v1,//wp-json/batch/v1,/?rest_route=/batch/v1,/cgi-bin/%%32%65,/cgi-bin/%2e%2e,/cgi-bin/%2e.,/cgi-bin/.%%32%65,/cgi-bin/.%2e,/h2probe-,/index.php?rest_route=/batch/v1,/wp-json/batch/v1 body=[PHP_SESSION_UPLOAD_PROGRESS] shapes=[CVE-2026-119618:bodyless_ct,CVE-2026-119618:connect_ct]
+spool dir=/home/user/projects/fleet-filter/var/lab-gw/spool written=0 failed=0 min_interval_s=0 max_entries=10000
+policy on-quarantined=inline
+map load failed (1 total): /home/user/projects/fleet-filter/var/lab-gw/tarpit-ips.map: No such file or directory (os error 2)
+detection peer=127.0.0.1 claim=body:PHP_SESSION_UPLOAD_PROGRESS spool=written
+detection peer=127.0.0.1 claim=body:PHP_SESSION_UPLOAD_PROGRESS spool=written
+detection peer=127.0.0.1 claim=body:PHP_SESSION_UPLOAD_PROGRESS spool=written

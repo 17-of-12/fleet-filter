@@ -1,0 +1,5 @@
+map load failed (1 total): /home/user/projects/fleet-filter/var/lab-gw/tarpit-ips.map: No such file or directory (os error 2)
+detection peer=127.0.0.1 claim=prefix:/h2probe- spool=written
+detection peer=127.0.0.1 claim=prefix:/wp-json/batch/v1 spool=written
+handshake failed from 127.0.0.1:48854: received corrupt message of type InvalidContentType
+detection peer=127.0.0.1 claim=prefix:/h2probe- spool=written

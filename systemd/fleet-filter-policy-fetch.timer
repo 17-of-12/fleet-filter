@@ -1,0 +1,18 @@
+# Every ten minutes: cheap when nothing changed (the wrapper compares digests and exits), and short
+# enough that a signature published in the morning is enforced the same morning.
+#
+# RandomizedDelaySec keeps a fleet from fetching in lockstep, which matters if the control node is
+# also the CA and the file server.
+[Unit]
+Description=Fetch the filter gateway policy periodically
+Documentation=file:/usr/local/share/doc/fleet-filter/POLICY-DISTRIBUTION.md
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+RandomizedDelaySec=120
+Persistent=true
+Unit=fleet-filter-policy-fetch.service
+
+[Install]
+WantedBy=timers.target

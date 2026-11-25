@@ -1,0 +1,42 @@
+{
+  "differing_rows": {
+    "1": "WP2Shell batch_route_pretty: the published POST",
+    "2": "WP2Shell batch_route_query: permalinks off spelling",
+    "3": "batch_route_query, index.php spelling",
+    "4": "batch_route_slash_collapse",
+    "5": "control: the ordinary REST route must not match",
+    "6": "control: GET on the batch route - the store says POST only, the gateway prefix match is method-blind"
+  },
+  "recorded_at": "2026-11-24T18:06:52Z",
+  "session": "/home/user/projects/fleet-filter/data/lab/sessions/wp2shell-baseline",
+  "variants": {
+    "with-wp2shell": {
+      "policy": "/home/user/projects/fleet-filter/var/lab-gw/policy-wp-full.toml",
+      "rows": {
+        "1": "404/exploit-probe",
+        "2": "404/exploit-probe",
+        "3": "404/exploit-probe",
+        "4": "404/exploit-probe",
+        "5": "403/generic",
+        "6": "404/exploit-probe",
+        "7": "302/none",
+        "8": "302/none"
+      },
+      "sessions": "/home/user/projects/fleet-filter/data/lab/sessions/wp2shell-baseline-replay-20261124T180636Z"
+    },
+    "without-wp2shell": {
+      "policy": "/home/user/projects/fleet-filter/var/lab-gw/policy-wp-baseline.toml",
+      "rows": {
+        "1": "302/none",
+        "2": "302/none",
+        "3": "302/none",
+        "4": "302/none",
+        "5": "302/none",
+        "6": "302/none",
+        "7": "302/none",
+        "8": "302/none"
+      },
+      "sessions": "/home/user/projects/fleet-filter/data/lab/sessions/wp2shell-baseline-replay-20261124T180635Z"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/17-of-12/fleet-filter/security/advisories/new
+    about: Do not open a public issue for a bypass or a flaw in the gateway.
+  - name: How to contribute a new exploit
+    url: https://github.com/17-of-12/fleet-filter/blob/main/docs/EXPLOIT-CORPUS.md
+    about: The evidence a corpus contribution needs, and what the checker refuses.

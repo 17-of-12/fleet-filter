@@ -1,0 +1,12 @@
+HTTP/2 302 
+date: Tue, 24 Nov 2026 18:08:15 GMT
+server: Apache/2.4.65 (Debian)
+x-powered-by: PHP/8.3.26
+expires: Wed, 11 Jan 1984 05:00:00 GMT
+cache-control: no-cache, must-revalidate, max-age=0, no-store, private
+x-redirect-by: WordPress
+location: https://127.0.0.1:8702/wp-admin/install.php
+content-length: 0
+content-type: text/html; charset=UTF-8
+x-request-id: t1795543695-4
+

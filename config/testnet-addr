@@ -1,0 +1,12 @@
+# Fleet-Filter TEST-NET addresses that must exist on `lo` for the project's test listeners.
+# Consumed by bin/ensure-testnet-addrs.sh (deployed as /usr/local/bin/ensure-testnet-addrs.sh)
+# and reconciled at boot by systemd/fleet-filter-testnet-addr.service, which is ordered
+# Before=httpd.service so an Apache `Listen` on one of these addresses cannot fail after a
+# reboot. Additive only: addresses present on lo but absent here are never removed.
+#
+# 198.18.0.0/15 is the TEST-NET-2 range used project-wide instead of 127.0.0.0/8 aliases,
+# because Wazuh's firewall-drop active response has DROP'd loopback test addresses before.
+#
+# Address        Purpose
+198.51.100.110    # Stage 2 gateway backend vhost (apache/gateway-backend.conf, :8088)
+198.51.100.111    # Stage 2 gateway listener (fleet-filter-gateway.service, :8443)

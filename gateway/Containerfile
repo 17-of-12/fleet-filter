@@ -1,0 +1,70 @@
+# Containerfile - reproducible EL8 build for fleet-filter-gateway (Bundle N1).
+#
+# Why a container build when lab-web01 is itself EL8: lab-web01 has no container runtime
+# (measured), and installing a Rust toolchain on the host we are using as the test target would
+# make "the test host" and "the build host" the same machine - which hides exactly the class of
+# failure this bundle exists to catch (a binary that only runs where it was compiled). build01
+# has podman 5.8.2 (measured) and is where the build runs from.
+#
+# Two stages on purpose:
+#   builder  - EL8 + the pinned toolchain + gcc (ring compiles C/asm, so a C compiler is not
+#              optional even though the language is Rust; ADR-0001 M2 records this).
+#   runtime  - EL8 with nothing but the binary, so the shipped image's glibc is EL8's 2.28 and
+#              the artifact's linkage is the same one a native EL8 build would produce.
+#
+# The builder stage is layered so the expensive part is cached:
+#   1. toolchain install      - changes only when the pinned versions change;
+#   2. dependency compile     - changes only when Cargo.toml/Cargo.lock change (see below);
+#   3. lint gate              - format + clippy on the real sources;
+#   4. crate compile          - the only step that reruns on a source-only edit.
+# Before this, `COPY src` sat directly above `cargo build`, so any one-line edit invalidated the
+# build layer and recompiled all 65 crates - three minutes to learn something the compiler could
+# say in seconds. The stub-crate trick is what separates "dependencies changed" from "code changed".
+
+FROM docker.io/library/oraclelinux:8 AS builder
+ARG RUST_PKG=rust-1.92.0
+ARG CARGO_PKG=cargo-1.92.0
+ARG RUSTFMT_PKG=rustfmt-1.92.0
+ARG CLIPPY_PKG=clippy-1.92.0
+ARG CARGO_FLAGS=--release
+# rustfmt and clippy are installed here (not just on the dev host) so the toolchain of record for
+# the shipped artifact is the one that judges formatting and lints, and the ADR-pinned version is
+# the one that produced the verdict.
+RUN dnf -y install ${RUST_PKG} ${CARGO_PKG} ${RUSTFMT_PKG} ${CLIPPY_PKG} gcc make && dnf clean all
+WORKDIR /src
+
+# Compile the dependency graph against a stub crate first. The stub is `fn main() {}`, so the
+# crate's own code cannot influence the cache key: only Cargo.toml/Cargo.lock can. `--release`
+# matches the artifact build, so step 4 reuses this output instead of compiling a second profile.
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p src && printf 'fn main() {}\n' > src/main.rs \
+ && cargo build ${CARGO_FLAGS} && rm -rf src
+
+COPY src ./src
+
+# Static gate (operating rule 15): an artifact cannot be produced from a tree that does not format
+# or that lints with warnings, because the artifact record is the thing we trust later. Set
+# LINT=0 to build anyway while deliberately working through a pre-existing lint failure.
+ARG LINT=1
+RUN if [ "${LINT}" = "1" ]; then \
+      cargo fmt --all -- --check \
+      && cargo clippy --all-targets ${CARGO_FLAGS} -- -D warnings; \
+    fi
+
+# `touch` is not cosmetic: cargo fingerprints the crate by source mtime, and the stub's main.rs
+# was created *during* the dependency layer, so it is newer than the real sources copied after it.
+# Without touching them, `cargo build` considers the stub's artifact fresh and ships a 355 KB
+# `fn main() {}` binary instead of the gateway (observed: --version printed nothing).
+RUN find src -type f -exec touch {} + \
+ && cargo build ${CARGO_FLAGS} \
+ && cp target/release/fleet-filter-gateway /fleet-filter-gateway \
+ && cp Cargo.lock /Cargo.lock && rustc --version > /toolchain.txt
+
+FROM docker.io/library/oraclelinux:8 AS runtime
+COPY --from=builder /fleet-filter-gateway /usr/local/bin/fleet-filter-gateway
+COPY --from=builder /Cargo.lock /usr/share/fleet-filter-gateway/Cargo.lock
+COPY --from=builder /toolchain.txt /usr/share/fleet-filter-gateway/TOOLCHAIN
+LABEL org.opencontainers.image.title="fleet-filter-gateway" \
+      org.opencontainers.image.description="Stage 2 security gateway front-end (Fleet-Filter)"
+ENTRYPOINT ["/usr/local/bin/fleet-filter-gateway"]
+CMD ["--bind", "127.0.0.1:8082"]

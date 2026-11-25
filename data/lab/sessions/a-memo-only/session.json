@@ -1,0 +1,31 @@
+{
+  "claims_in_spool": 3,
+  "drains": [],
+  "gateway_binary": "/home/operator/.cache/probe-tarpit-gateway/target/release/probe-tarpit-gateway",
+  "gateway_version": "",
+  "git_dirty": true,
+  "git_head": "72943769fe8a33f7f8e1d54de15d45de0f54b1f2",
+  "git_short": "7294376",
+  "groups": [
+    "after",
+    "baseline",
+    "exploit",
+    "raw"
+  ],
+  "name": "a-memo-only",
+  "policy_path": "/home/user/projects/fleet-filter/var/lab-gw/policy.toml",
+  "policy_sha256": "1efa1dbf4937dbd09cee179280dbd4ad0f6252b449f4be7673db0049d0884c7b",
+  "recorded_at": "2026-11-24T14:59:03.557211+00:00",
+  "requests": 12,
+  "store_sha256": "860ad0b5a052d8a8816b7384478926ff1a35e8d871a36583718f688160941b93",
+  "tool_versions": {
+    "--version": "probe-tarpit-gateway 0.1.0",
+    "curl -V": "curl 8.18.0 (x86_64-pc-linux-gnu) libcurl/8.18.0 OpenSSL/3.5.5 zlib/1.3.1 brotli/1.2.0 zstd/1.5.7 libidn2/2.3.8 libpsl/0.21.2 libssh2/1.11.1 nghttp2/1.68.0 librtmp/2.3 mit-krb5/1.22.1 OpenLDAP/2.6.10"
+  },
+  "url": "https://127.0.0.1:8443",
+  "victim": "operator@10.20.0.226:/var/lib/ff-httpd/2.4.49",
+  "victim_containers": [
+    "ff-httpd-2.4.62 localhost/ff-httpd:2.4.62 Up 37 minutes ago",
+    "ff-httpd-2.4.49 localhost/ff-httpd:2.4.49 Up 37 minutes ago"
+  ]
+}

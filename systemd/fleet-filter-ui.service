@@ -1,0 +1,46 @@
+[Unit]
+# Project: Fleet-Filter (Bundle Y1) - the fleet console, deployed as a service on the control node.
+# This unit runs on build01.lab. It is a reader, not a dependency: no Apache vhost, gateway
+# or controller on any fleet host starts or serves through it, so `systemctl stop` it and served
+# traffic does not change. The console's own availability is the only thing this unit controls.
+Description=fleet-filter-ui: fleet console (Bundle Y)
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/CONSOLE.md
+
+[Service]
+Type=simple
+# Runs as the service account that owns the repository and, more importantly, the SSH key that
+# web/sync.py uses to read each registered host's controller state. A dedicated unprivileged user
+# (the pattern used for fleet-filter-gw on lab-web01) would need its own delegated read key before
+# the sync path would work, so the console inherits `agent` instead. See docs/CONSOLE.md, "Identity".
+User=agent
+Group=agent
+WorkingDirectory=/home/agent/projects/Fleet-Filter
+# The app and the syncer share one default cache path; the unit sets it once rather than carrying
+# the path in two places. /var/lib replaces the /tmp location the first dev run used, which tmpfiles
+# and any reboot would have wiped.
+Environment=PT_UI_DB=/var/lib/fleet-filter-ui/cache.db
+Environment=PT_UI_REGISTRY=/home/agent/projects/Fleet-Filter/web/installs.yaml
+# 8735 is the internal port. Apache owns the published port (8188) and proxies here, so the app is
+# never reachable off-host without passing Apache's authentication.
+Environment=PT_UI_PORT=8735
+# Y2: the write path is enabled here. Without this flag the console renders no controls and
+# answers POSTs with 403, which is the deployed default for every other host.
+Environment=PT_UI_ALLOW_ACTIONS=yes
+ExecStart=/home/agent/projects/Fleet-Filter/.venv/bin/python web/app.py --bind 127.0.0.1
+# The app re-reads cache.db on every request, so a reload is only needed for code or environment
+# changes; the hook exists so `systemctl reload` is not a hard error.
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+# The process holds one listening socket and a handful of short-lived request threads; the cap is
+# sized from the dev instance's observed footprint (single-digit MB), not from a guess at load.
+MemoryMax=256M
+# Read-only everywhere except the cache directory. The console has no other write path while
+# --allow-actions is unset (Bundle Y2 is what would add one).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/fleet-filter-ui
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+# Reconciles the project's TEST-NET addresses onto `lo` at boot, before Apache starts.
+#
+# Why this exists: every Fleet-Filter test listener on lab-web01 binds a TEST-NET address, and
+# those addresses were historically created with ad hoc `ip addr add` calls. `lo` is unmanaged
+# by NetworkManager on that host, so nothing restores them; an Apache `Listen` on a missing
+# address does not warn, it fails to start, and that failure takes the production :443 vhost
+# down with the test vhost. Ordering this unit Before=httpd.service makes the addresses a
+# precondition of Apache rather than a memory.
+[Unit]
+Description=Fleet-Filter: ensure TEST-NET addresses exist on lo
+Documentation=file:/usr/local/bin/ensure-testnet-addrs.sh
+DefaultDependencies=no
+After=network-pre.target
+Wants=network-pre.target
+Before=httpd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ensure-testnet-addrs.sh --file /etc/fleet-filter/testnet-addr --dev lo
+
+[Install]
+WantedBy=multi-user.target

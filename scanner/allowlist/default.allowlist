@@ -1,0 +1,29 @@
+# Stage 4 webtree audit - default suppression set (Bundle Z5).
+#
+# Why this file exists: the first audit of build01's real docroot returned 57 quarantined files and
+# every one of them was Composer dependency code (`brick/math/src/BigInteger.php`,
+# `composer/ClassLoader.php`, `google/auth/src/...`). The analyzer was not wrong - a dependency tree
+# is dense, encoded, and full of variable-function constructs - but a page whose first answer to
+# "what is suspicious on this host" is "your dependencies" gets ignored, and an ignored detector is
+# worse than no detector. Z5 is the false-positive control that makes the finding list usable.
+#
+# Entry forms (implemented by `is_allowlisted` in bin/webtree-audit.py):
+#   `name/`          a bare directory name - suppresses any directory with that name, at any depth.
+#                    This is the form that covers a dependency tree without naming every app.
+#   `app/vendor`     a path relative to the audit root - suppresses one app's tree only.
+#   `/abs/path`      an absolute file or directory - suppresses that exact file, or that directory.
+#
+# Deliberately absent: `dist/`, `build/`, `tmp/`, `cache/`. Those are plausible places for a
+# webshell to be dropped, and suppressing them buys quiet rather than accuracy. Add one only when a
+# specific app on a specific host is proven to generate it.
+
+# Dependency trees - code shipped by a package manager, not written on this host.
+vendor/
+node_modules/
+bower_components/
+
+# VCS metadata: git object data scores as high-entropy binary content and is not web-served.
+.git/
+
+# Python bytecode caches - compiled artefacts, not source an attacker controls.
+__pycache__/

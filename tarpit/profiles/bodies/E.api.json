@@ -1,0 +1,28 @@
+{
+  "status": "ok",
+  "data": {
+    "term": "202661",
+    "records_returned": 1,
+    "records_total": 1,
+    "page": 1,
+    "page_size": 25,
+    "next_cursor": null,
+    "student": {
+      "id": "000043219",
+      "first_name": "Example",
+      "last_name": "Student",
+      "class_stand": "JR",
+      "program": "B.S. Informatics",
+      "holds": [],
+      "advisor": "a.moreno@example.internal",
+      "reg_status": "active"
+    }
+  },
+  "meta": {
+    "api_version": "3.14.2",
+    "generated_at": "2026-11-15T09:12:44Z",
+    "request_id": "b7f0c1e4-9a2d-4c1e-8f6a-2d5c9e0b1a44",
+    "cache": "miss",
+    "latency_ms": 412
+  }
+}

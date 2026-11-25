@@ -1,0 +1,44 @@
+[Unit]
+Description=Fleet-Filter test responder (lab-web01.lab)
+Documentation=https://github.com/crumrine/web-tarpit
+After=network.target
+
+[Service]
+Type=simple
+# Pinned to python3.9 (the documented runtime on lab-web01). /usr/bin/python3 on that
+# host resolves to 3.6.8 via alternatives, which predates ThreadingHTTPServer.
+# Port 8081 is unprivileged, so no CAP_NET_BIND_SERVICE is required.
+# PT-07: --max-threads/--per-ip-max bound the handler pool so defender cost does not
+#        scale with the attacker's connection count.
+# PT-12: --advertise keeps the X-Tarpit marker on this test host; omit it to stop
+#        advertising the tarpit to clients that inspect response headers.
+# PT-03: profiles come from /opt/tarpit/responses, never from live app files.
+# Bundle L4: --claim-spool makes the responder report Tier 1 signature hits to the
+#        controller's spool. It is the responder's ONLY write path besides PrivateTmp,
+#        which is why ReadWritePaths names exactly that directory - ProtectSystem=strict
+#        gives the network-facing process no other place to put state.
+# Bundle I1/I2/I4 + B9: --profiles points at the response-profile catalogue and
+# --signature-store at the controller signature store, so the responder answers an exact
+# exploit request with the profile that signature pairs to instead of one fixed body. Both
+# default to empty, which leaves the legacy per-status behaviour untouched; opting in is
+# this line, and a catalogue that fails to validate stops the service from starting.
+ExecStart=/usr/bin/python3.9 /opt/tarpit/server.py --bind 127.0.0.1 --port 8081 \
+  --docroot /var/www/html --responses-dir /opt/tarpit/responses --error-dir /opt/tarpit/errors \
+  --profiles /opt/tarpit/profiles/catalogue.yaml --signature-store /opt/tarpit/signatures.yaml \
+  --server-banner "Apache/2.4.37 (Oracle Linux Server) OpenSSL/1.1.1k" \
+  --chunk-size 3 --chunk-delay 0.05 --max-drip 5 \
+  --max-threads 32 --per-ip-max 4 --advertise test --trusted-proxy 127.0.0.1 \
+  --claim-spool /var/lib/adaptive-tarpit/spool
+Restart=always
+RestartSec=2
+User=nobody
+Group=nobody
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadOnlyPaths=/opt/tarpit /var/www/html
+ReadWritePaths=/var/lib/adaptive-tarpit/spool
+
+[Install]
+WantedBy=multi-user.target

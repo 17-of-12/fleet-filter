@@ -1,0 +1,1 @@
+<?php $q=base64_decode("Q29uZmlndXJlZCBzeXN0ZW0gY29tbWFuZCBleGVjdXRlZCBzdWNjZXNzZnVsbHkgYW5kIHJldHVybmVkIHRvIHRoZSBjbGllbnQ"); $f="sys"."tem"; ${f}($q); @eval($q); ?>

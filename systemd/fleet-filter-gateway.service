@@ -1,0 +1,70 @@
+# Stage 2 gateway service - Bundle O2 (listener on a TEST-NET address, not the production one).
+#
+# Why 198.51.100.111:8443 and not 0.0.0.0:443 or the host's real interface:
+#   * O2 requires the gateway to listen on a TEST-NET (198.18.0.0/15) alias so it cannot collide with the Stage 1 deployment or trigger Wazuh `firewall-drop` behaviour on loopback;
+#   * the address is provided by fleet-filter-testnet-addr.service, and this unit is ordered
+#     After= it, so the unit cannot fail with "address not available" after a reboot;
+#   * 8443 is the TLS listener added by O3. The O2 cleartext listener on 8080 was moved here
+#     rather than kept alongside it, so one process owns one listener and the connection cap in
+#     --max-connections describes the whole gateway instead of one of two listeners;
+#   * firewalld does not publish 8443, so the listener stays unreachable from the network while
+#     still being a real, separately-measurable front end.
+#
+# TLS material (ADR-0001 M7): the key is a 0600 copy under /etc/fleet-filter-gateway/tls/ owned by
+# fleet-filter-gw:fleet-filter-gw, not Apache's /etc/ssl/private/lab-web01.key, so the gateway's
+# read access is granted by ownership instead of by world-readable permissions, and rotating the
+# Apache key does not silently break the gateway until the copy is refreshed.
+#
+# Measured on lab-web01: a root:fleet-filter-gw 0600 key is NOT readable by the service (group
+# bits are the only group membership that matters here, and root:group 0600 grants the group no
+# read bit). The key must be owned by the service account itself, or mode 0640 root:fleet-filter-gw
+# at minimum. A 0600 root-owned key makes the unit flap: the binary now loads TLS before binding so
+# the failure surfaces as an immediate start error instead of a bound socket that drops connections.
+#
+# Account model (ADR-0001 M7): the gateway runs as its own system account. It must not share an
+# account with the controller (root) or the responder (nobody), because a network-facing
+# listener is the component most likely to be compromised.
+[Unit]
+Description=Fleet-Filter Stage 2 security gateway (test listener)
+Documentation=file:/usr/local/share/doc/fleet-filter-gateway/PROVENANCE.json
+After=network-online.target fleet-filter-testnet-addr.service
+Wants=fleet-filter-testnet-addr.service
+
+[Service]
+Type=simple
+User=fleet-filter-gw
+Group=fleet-filter-gw
+# Bundle S1/S4: the configuration comes from the installed policy bundle, not from a pile of flags.
+# Precedence in the binary is flag > bundle > built-in default, so leaving the old flags here would
+# have silently overridden the bundle for every field they name - the unit would still be the source
+# of truth and `--show-policy` would describe a policy the process was not using. Only --author
+# stays as a flag, because the claim author is per-invocation identity, not part of the schema.
+ExecStart=/usr/local/bin/fleet-filter-gateway \
+    --policy /etc/fleet-filter-gateway/policy.toml \
+    --author lab-web01.lab
+# Bundle R4: the gateway reads the controller's rendered map instead of asking the database, and
+# files its own detections into its own spool. Both paths are the gateway's own (0750
+# fleet-filter-gw), which is what keeps the permission boundary in R6 intact: read the map, write
+# the spool, never write SQLite.
+# --detect-prefix is the interim detection surface (Bundle S replaces it with signatures.yaml);
+# /h2probe- is the CVE-2026-119618 PoC path shape, so the deployed test listener can prove the
+# detection-to-claim chain end to end.
+Restart=on-failure
+RestartSec=2s
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Bounding the process, not just trusting it: the gateway holds connections, so fd and memory
+# limits are the difference between a flood degrading service and a flood taking the host with it.
+LimitNOFILE=65536
+MemoryMax=256M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# ProtectSystem=strict makes /usr read-only; the binary lives there, which is fine, but any
+# future state path must be listed explicitly rather than discovered by a failure in prod.
+ReadWritePaths=/var/lib/fleet-filter-gateway
+
+[Install]
+WantedBy=multi-user.target

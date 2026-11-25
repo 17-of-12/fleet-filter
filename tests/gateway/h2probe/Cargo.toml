@@ -1,0 +1,18 @@
+[package]
+name = "h2probe"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92.0"
+description = "Open N concurrent HTTP/2 streams on ONE connection and report what came back"
+
+# Deliberately NOT part of the gateway package. The gateway's artifact record pins one binary and
+# one Cargo.lock; a test client belongs in its own lockfile so adding a test tool cannot change the
+# shipped artifact's hash.
+[dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "net", "time", "io-util", "macros", "sync"] }
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1", "http2"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
+http-body-util = { version = "=0.1.5" }
+bytes = "=1.11.1"
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring", "logging", "tls12"] }

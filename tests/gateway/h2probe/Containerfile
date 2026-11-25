@@ -1,0 +1,14 @@
+# Containerfile - build h2probe (test client) with the same toolchain as the gateway.
+#
+# Kept separate from gateway/Containerfile on purpose: the gateway's artifact record pins one
+# binary and one Cargo.lock, and a test client must not become part of that record.
+FROM docker.io/library/oraclelinux:8 AS builder
+RUN dnf -y install rust-1.92.0 cargo-1.92.0 gcc make && dnf clean all
+WORKDIR /src
+COPY Cargo.toml ./
+COPY src ./src
+RUN cargo build --release && cp target/release/h2probe /h2probe && rustc --version > /toolchain.txt
+
+FROM docker.io/library/oraclelinux:8 AS runtime
+COPY --from=builder /h2probe /usr/local/bin/h2probe
+COPY --from=builder /toolchain.txt /usr/share/h2probe/TOOLCHAIN

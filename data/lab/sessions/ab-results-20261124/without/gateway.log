@@ -1,0 +1,8 @@
+probe-tarpit-gateway 0.1.0 listening on 127.0.0.1:8702 [tls(cert=/home/user/projects/fleet-filter/var/replay/20261124T180838Z/CVE-2026-63030/gw.crt)]
+policy version=replay-CVE-2026-63030-without mode=serve posture=standard bind=127.0.0.1:8702 backend=http://10.20.0.226:8090 tls=yes alpn=h2+http/1.1 on_quarantined=inline deception=inline(detected=exploit-probe,quarantined=generic,drips=32) sha256=328b7526689ab2bcf5523ea92d37cc248a92fc2f0e996483187cfcd7ef8eb2a9
+classify detection=/cgi-bin/%%32%65,/cgi-bin/%2e%2e,/cgi-bin/%2e.,/cgi-bin/.%%32%65,/cgi-bin/.%2e,/h2probe-
+spool dir=/home/user/projects/fleet-filter/var/ab/without/spool written=0 failed=0 min_interval_s=0 max_entries=10000
+policy on-quarantined=inline
+handshake failed from 127.0.0.1:52660: tls handshake eof
+map load failed (1 total): /home/user/projects/fleet-filter/var/ab/without/tarpit-ips.map: No such file or directory (os error 2)
+signal: SIGTERM

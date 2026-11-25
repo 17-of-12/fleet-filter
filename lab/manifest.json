@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "updated": "2026-11-25",
+  "hosts": [
+    {
+      "name": "ff-apache01",
+      "ip": "10.20.0.225",
+      "role": "victim",
+      "expected": [
+        {
+          "container": "ff-httpd-2.4.66",
+          "image": "localhost/ff-httpd:2.4.66",
+          "version": "2.4.66",
+          "cve": "CVE-2026-23918",
+          "ports": [
+            8080,
+            8443
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ff-apache02",
+      "ip": "10.20.0.226",
+      "role": "victim",
+      "expected": [
+        {
+          "container": "ff-httpd-2.4.62",
+          "image": "localhost/ff-httpd:2.4.62",
+          "version": "2.4.62",
+          "cve": "CVE-2026-119618",
+          "ports": [
+            8080,
+            8443
+          ]
+        },
+        {
+          "container": "ff-httpd-2.4.49",
+          "image": "localhost/ff-httpd:2.4.49",
+          "version": "2.4.49",
+          "cve": "CVE-2021-41773",
+          "ports": [
+            8081,
+            8444
+          ]
+        },
+        {
+          "container": "ff-wp",
+          "image": "docker.io/library/wordpress:6.8.2",
+          "version": "6.8.2",
+          "cve": "CVE-2026-63030",
+          "ports": [
+            8090
+          ],
+          "note": "WordPress behind MariaDB (ff-wp-db), reachable on 8090. Added 2026-11-24 so the four WP2Shell variants have a victim that runs the application the CVE is in; without it those variants were enforced against nothing."
+        },
+        {
+          "container": "ff-wp-db",
+          "image": "docker.io/library/mariadb:11.4",
+          "version": "11.4",
+          "cve": null,
+          "ports": []
+        },
+        {
+          "container": "ff-php",
+          "image": "docker.io/library/php:8.4.26-apache",
+          "version": "8.4.26",
+          "cve": "CVE-2026-109618",
+          "ports": [
+            8091
+          ],
+          "note": "mod_php victim for PHP2Shell. session.upload_progress.cleanup=Off and an LFI sink (/vuln.php) were added deliberately: chain A needs both, and the defaults made it return an empty body. Recorded in data/lab/poc-runs/."
+        },
+        {
+          "container": "ff-wp-694",
+          "image": "docker.io/library/wordpress:6.9.4",
+          "version": "6.9.4",
+          "cve": "CVE-2026-63030",
+          "ports": [
+            8094
+          ]
+        },
+        {
+          "container": "ff-fpm",
+          "image": "docker.io/library/php:8.4.26-fpm",
+          "version": "8.4.26",
+          "cve": "CVE-2026-129289",
+          "ports": [
+            9000
+          ]
+        },
+        {
+          "container": "ff-fpm-front",
+          "image": "docker.io/library/nginx:alpine",
+          "version": "alpine",
+          "cve": "CVE-2026-129289",
+          "ports": [
+            8092
+          ],
+          "note": "fastcgi_keep_conn on - the vulnerability precondition"
+        },
+        {
+          "container": "ff-apache-fcgi",
+          "image": "docker.io/library/httpd:2.4.66",
+          "version": "2.4.66",
+          "cve": "CVE-2026-129289",
+          "ports": [
+            8093
+          ],
+          "note": "mod_proxy_fcgi enablereuse=on; effect not observed here"
+        }
+      ]
+    },
+    {
+      "name": "ff-control01",
+      "ip": "10.20.0.205",
+      "role": "control",
+      "expected": []
+    }
+  ]
+}

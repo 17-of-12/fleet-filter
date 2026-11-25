@@ -1,0 +1,64 @@
+# Lab gateway policy template (not a deployed policy).
+#
+# Why a template rather than the checked-in policy files: the same experiment has to run on any host
+# that has the lab reachable, and the parts that differ between one run and the next are addresses,
+# ports and directory names. Keeping them as placeholders means `bin/exploit-replay.py` can reproduce
+# an arm exactly, and a policy that leaks a developer's /home path into a commit cannot happen.
+#
+# Placeholders: @BIND@ @BACKEND@ @MAP@ @SPOOL@ @TLS_CERT@ @TLS_KEY@ @GENERATED_AT@
+# The [detection] table is appended by the caller, rendered from the store with --only/--exclude.
+
+[policy]
+schema_version = 1
+version = "@VERSION@"
+generated_at = "@GENERATED_AT@"
+source_commit = "@SOURCE_COMMIT@"
+mode = "serve"
+
+[listener]
+bind = "@BIND@"
+tls_cert = "@TLS_CERT@"
+tls_key = "@TLS_KEY@"
+alpn = ["h2", "http/1.1"]
+
+[limits]
+max_connections = 128
+max_connections_per_source = 16
+max_body_bytes = 8388608
+max_headers = 100
+header_read_timeout_secs = 30
+
+[routing]
+default_backend = "@BACKEND@"
+forward_headers = true
+
+[quarantine]
+map = "@MAP@"
+map_ttl = 60
+map_memo_ttl = 300
+fallback = "allow"
+on_quarantined = "inline"
+
+[posture]
+active = "standard"
+methods = ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+header_names = []
+content_types = []
+max_path_bytes = 4096
+max_query_bytes = 4096
+max_path_segments = 128
+min_tls_version = "1.2"
+admission_cap_per_authority = 0
+
+[deception]
+detected_profile = "exploit-probe"
+quarantined_profile = "generic"
+max_concurrent_drips = 32
+max_drip_ms = 8000
+per_connection_max_bytes = 65536
+
+[spool]
+dir = "@SPOOL@"
+min_interval = 0
+max_entries = 10000
+

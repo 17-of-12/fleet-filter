@@ -1,0 +1,14 @@
+[Unit]
+Description=Run adaptive-tarpit lease expiry every 5 minutes
+# Project: Fleet-Filter (see ~/projects/Fleet-Filter/SKILL.md)
+Documentation=https://github.com/crumrine/web-tarpit
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+AccuracySec=1min
+# Apache's txt: RewriteMap cache is itself 60s, so a faster render cadence buys nothing.
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

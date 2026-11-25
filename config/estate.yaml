@@ -1,0 +1,44 @@
+# What this estate actually runs and serves.
+#
+# This file is the difference between "17,000 CVEs last month" and a worklist. A CVE that does not
+# name a product in this file cannot be exploited through this deployment, so it is excluded before
+# anything expensive happens. Keeping it as data rather than code means the triage output can be
+# explained by pointing at a line.
+#
+# `running` is what is deployed, not what is newest. A version is listed only if it is on a host:
+# listing a version that is not deployed produces work for an attack that cannot land here.
+#
+# Matching is by CPE vendor:product from the NVD record. When a record carries no CPE (common
+# immediately after publication), `keywords` decides, and anything matched that way is marked
+# `via: keyword` in the output so the weaker evidence is visible rather than averaged in.
+
+estate:
+  - name: apache httpd (lab victim 2.4.49, ff-apache01 2.4.66)
+    vendor: apache
+    product: httpd
+    running: ["2.4.49", "2.4.66"]
+
+  - name: php engine (php:8.4.26-apache)
+    vendor: php
+    product: php
+    running: ["8.4.26"]
+
+  - name: wordpress (behind the lab Apache once a victim exists)
+    vendor: wordpress
+    product: wordpress
+    running: ["6.8"]
+
+  - name: openssl (TLS endpoints)
+    vendor: openssl
+    product: openssl
+    running: ["3.0.13"]
+
+# Used only when a CVE has no CPE configuration. Matching a phrase here is weaker evidence than a
+# CPE match, and the output says which one it was.
+keywords:
+  - "apache http server"
+  - "http server 2.4"
+  - "php"
+  - "wordpress"
+  - "mod_http2"
+  - "openssl"

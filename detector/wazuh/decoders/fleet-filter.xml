@@ -1,0 +1,27 @@
+<!--
+  Fleet-Filter - Wazuh decoder for the test vhost's extended Apache access log.
+
+  Status: DRAFT. Only needed for the port-80 test vhost on lab-web01, whose LogFormat
+  appends `ct=<content-type> cl=<content-length> ho=<authority>` after the standard
+  combined fields (see apache/tarpit-test.conf). The stock `apache` decoder does not
+  expose those three fields, and they are exactly what the CVE-2026-119618 `bodyless_ct`
+  signature keys on (measured values in
+  data/research/cve-2026-119618-poc-validation-2026-11-12.md).
+
+  The agent currently reads /var/log/httpd/access_log (the *:443 vhost, plain combined
+  format) and NOT /var/log/httpd/tarpit-test-access.log, so this decoder is inert until
+  either that log is added as a source or the 443 vhost adopts the extended format.
+
+  Verified: XML well-formedness only. Wazuh regex/decoder semantics cannot be validated
+  without the manager - it needs to be loaded on estate-01 and tested with a real event.
+-->
+<decoder name="fleet-filter-access">
+
+  <!-- Extended format: combined + the three controller fields, always present.
+       Written without optional groups because Wazuh's decoder regex requires the
+       capture count to match <order> exactly. -->
+  <prematch>^\d+\.\d+\.\d+\.\d+ - </prematch>
+  <regex>^(\S+) \S+ (\S+) \[([^\]]+)\] "(\w+) (\S+) ([^"]*)" (\d{3}) (\d+) "([^"]*)" "([^"]*)" ct=(\S+) cl=(\S+) ho=(\S+)$</regex>
+  <order>srcip, ident, user, time, method, url, protocol, status, bytes, referer, useragent, content_type, content_length, request_host</order>
+
+</decoder>

@@ -1,0 +1,15 @@
+[Unit]
+# Project: Fleet-Filter - daily image retention on the build host.
+Description=fleet-filter: daily container image retention (build host hygiene)
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/gateway/ADR-0001.md
+
+[Timer]
+# Daily rather than hourly: retention is about weeks of accumulated builds, not the last commit, and
+# the tool's own age floor (24 h) means a more frequent interval would find nothing to do. Runs after
+# the hourly rebuild timer, so a build that just finished is still inside the age floor and survives.
+OnCalendar=*-*-* 03:15:00
+AccuracySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

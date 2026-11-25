@@ -1,0 +1,32 @@
+version: 2
+
+# Dependabot opens one PR per ecosystem per day at most, because a security tool that drowns its
+# maintainers in dependency churn is a security tool nobody reviews.
+updates:
+  - package-ecosystem: cargo
+    directory: /gateway
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      rust-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"

@@ -1,0 +1,5 @@
+[Tue Nov 24 21:12:13.424239 2026] [php:error] [pid 12:tid 12] [client 10.20.1.148:54612] PHP Fatal error:  Allowed memory size of 134217728 bytes exhausted (tried to allocate 65016420 bytes) in Unknown on line 0
+[Tue Nov 24 21:12:19.001122 2026] [php:error] [pid 12:tid 12] [client 198.51.100.7:40222] PHP Fatal error:  Allowed memory size of 134217728 bytes exhausted (tried to allocate 134213632 bytes) in /var/www/html/index.php on line 3
+[Tue Nov 24 21:13:02.000001 2026] [php:notice] [pid 12:tid 13] [client 198.51.100.7:40230] PHP Notice:  Undefined variable $page in /var/www/html/index.php on line 3
+10.20.1.148 - - [24/Nov/2026:18:16:13 +0000] "POST / HTTP/1.1" 200 370 "-" "-"
+[Tue Nov 24 21:13:05.000001 2026] [mpm_prefork:notice] [pid 1:tid 1] AH00163: Apache/2.4.69 (Debian) PHP/8.4.26 configured -- resuming normal operations

@@ -1,0 +1,61 @@
+# fleet-filter-apache - Stage 3 canary image (Bundle V).
+#
+# Built from the project's own Containerfile rather than assuming `httpd:2.4` or `php:*-apache` is
+# a drop-in for the distribution's httpd packages (V1). The base is Oracle Linux 8 pinned by digest,
+# which is the only base whose Apache can load the same modules the host's Apache does.
+#
+# Build entry point: bin/build-container-apache.sh (it resolves the pinned digest from
+# container/config.yaml, tags with the git sha, and writes the provenance record).
+
+ARG BASE_IMAGE=docker.io/library/oraclelinux@sha256:9225108d00fb6611ebc4a5eced166f27d9dcfeaa539fb127be79425f0da5e745
+FROM ${BASE_IMAGE}
+
+ARG FLEET_FILTER_VERSION=0.0.0
+ARG VCS_REF=unknown
+LABEL io.fleet-filter.image="fleet-filter-apache" \
+      io.fleet-filter.version="${FLEET_FILTER_VERSION}" \
+      io.fleet-filter.vcs-ref="${VCS_REF}" \
+      io.fleet-filter.base="${BASE_IMAGE}"
+
+# `nodocs` keeps the image small without changing which files the RPM owns; the module list and
+# configuration layout are identical to the package on the host, which is the point of the image.
+RUN set -eux; \
+    dnf -y --setopt=tsflags=nodocs install httpd; \
+    dnf clean all; \
+    rm -rf /var/cache/dnf /var/cache/yum
+
+# The container user. Created explicitly rather than reused, so the uid in `container/config.yaml`,
+# the `User` directive baked into httpd.conf, and the compose `user:` field are one value, not three
+# that happen to agree.
+RUN set -eux; \
+    getent group 980 >/dev/null || groupadd -g 980 fleet-filter-apache; \
+    getent passwd 980 >/dev/null || useradd -u 980 -g 980 -d /nonexistent -s /sbin/nologin fleet-filter-apache
+
+# Configuration comes from the repository, never from an in-container edit.
+COPY canary/httpd.conf /etc/httpd/conf/httpd.conf
+COPY canary/conf.d/ /etc/httpd/conf.d/
+# The RPM ships a welcome page and an enabled `UserDir public_html`; the host under test has
+# `UserDir disabled` and serves a real tree, so neither belongs in the canary.
+RUN rm -f /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/userdir.conf
+
+# A placeholder Stage 1 map so the baked configuration is testable in the image. At runtime the
+# host's live /etc/httpd/tarpit-ips.map is bind-mounted over it; without a file here, `httpd -t`
+# fails with `RewriteMap: file for map tarpit not found`, which turns a valid image into one that
+# cannot be validated before it is deployed (measured on the 0.1.0 build).
+RUN printf '# placeholder map baked into the image; the host map is mounted over this at runtime\n' \
+    > /etc/httpd/tarpit-ips.map && chown 980:980 /etc/httpd/tarpit-ips.map
+
+# /var/log/httpd is 0700 root:root in the package; the canary writes it as 1001, and the host
+# mounts its own directory over it, so the in-image copy only has to satisfy `httpd -t`.
+RUN mkdir -p /var/log/httpd && chown 980:980 /var/log/httpd && \
+    rm -f /etc/httpd/run/httpd.pid && mkdir -p /run/httpd && chown 980:980 /run/httpd
+
+EXPOSE 8080
+USER 980:980
+
+# Bash /dev/tcp probe rather than curl: curl is not in the base image and adding it just to answer
+# a healthcheck costs more than the probe it replaces.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET / HTTP/1.0\r\nHost: fleet-filter-canary\r\n\r\n" >&3 && head -n1 <&3 | grep -q "HTTP/"'
+
+CMD ["/usr/sbin/httpd", "-DFOREGROUND", "-d", "/etc/httpd", "-f", "/etc/httpd/conf/httpd.conf"]

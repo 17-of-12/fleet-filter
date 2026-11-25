@@ -1,0 +1,139 @@
+# Tarpit deception catalogue - Bundle I1 (the A-G profiles), I4 (one shared identity),
+# and the vocabulary that Bundle B9 pairs a signature variant to a response.
+#
+# Why this file exists as data: the handoff names seven response strategies (docs/HANDOFF.md
+# section 12.1) but the responder and the gateway each grew their own names for them
+# (`generic_slow` / `slow_error` in signatures.yaml, `generic` / `exploit-probe` / `api-probe`
+# in gateway/src/deception.rs). Three vocabularies for one concept is how a host ends up
+# answering one request with two different personalities. This catalogue is the single place
+# that names the profiles, and tests/unit/test_profiles.py fails if any other component
+# references a profile this file does not define.
+#
+# Everything here is fabricated. No real repository names, internal addresses, or real
+# people appear in any body (handoff section 12.5: synthetic credentials only).
+
+schema: 1
+
+# I4 - the shared deception identity. One fake application, presented identically on every
+# host the same adversary reaches. An attacker that sees three different versions of the same
+# app on three of our hosts has learned more than we taught them, so the banner, the version
+# and the build string are declared once and every responder and gateway reads them from here.
+identity:
+  application: campus-portal
+  version: "2026.11.4"
+  build: "2026.11.4+sha.9f2c1d"
+  origin: example.internal
+  # The HTTP identity. Kept identical to what lab-web01's real Apache answers, because the
+  # cheapest way to be caught lying is a Server header that disagrees with the site next door.
+  server_header: "Apache/2.4.37 (Oracle Linux Server) OpenSSL/1.1.1k"
+  x_powered_by: "PHP/7.2.34"
+  robots: "noindex,nofollow"
+  charset: UTF-8
+
+# The seven strategies from the handoff, plus the aliases every other component uses.
+# `aliases` is the bridge: a signature variant says `response_profile: slow_error` and that
+# resolves to profile D here, so the signature vocabulary and the profile vocabulary cannot
+# drift apart.
+profiles:
+  A:
+    name: slow-fake-config
+    title: "Slow fake configuration"
+    media_type: text/plain
+    body_file: bodies/A.env
+    aliases: [generic_slow, generic]
+    # An .env is only ever served as a file; "absent" means the file is not there.
+    statuses: { vulnerable: 200, absent: 404 }
+    absent_body: bodies/D.error.html
+  B:
+    name: slow-git-metadata
+    title: "Slow Git repository metadata"
+    media_type: text/plain
+    body_file: bodies/B.git-config
+    aliases: [git_config, slow_git]
+    statuses: { vulnerable: 200, absent: 404 }
+    absent_body: bodies/D.error.html
+  C:
+    name: fake-admin-site
+    title: "Fake administrative website"
+    media_type: text/html
+    body_file: bodies/C.admin.html
+    aliases: [admin_html, fake_admin]
+    # A login page answers 200 whether or not the scanner expected an app there; the "absent"
+    # answer for an HTML profile is the real Apache 404, which is what D serves.
+    statuses: { vulnerable: 200, absent: 404 }
+    absent_body: bodies/D.error.html
+  D:
+    name: slow-error
+    title: "Slow error response"
+    media_type: text/html
+    body_file: bodies/D.error.html
+    aliases: [slow_error, error_html, generic_error, slow_404_app_shaped, slow_400, exploit-probe]
+    # The signature store names two error shapes that differ only in status code, so the alias
+    # carries the status: `slow_400` must answer 400 and `slow_404_app_shaped` must answer 404.
+    # Without this the vocabulary bridge would silently rewrite a 400 into a 404, and a scanner
+    # that asked a malformed question and got a well-formed 404 has learned something again.
+    alias_status: { slow_400: 400, slow_404_app_shaped: 404 }
+    # An error profile has no "vulnerable" shape - the answer is the error either way, and the
+    # difference is only which status the caller expects.
+    statuses: { vulnerable: 404, absent: 404 }
+    absent_body: bodies/D.error.html
+  E:
+    name: slow-json-api
+    title: "Slow JSON/API response"
+    media_type: application/json
+    body_file: bodies/E.api.json
+    aliases: [slow_json, api_json, api_probe, api-probe]
+    statuses: { vulnerable: 200, absent: 404 }
+    absent_body: bodies/D.error.html
+  F:
+    name: delayed-headers
+    title: "Delayed headers and progress"
+    media_type: text/plain
+    body_file: bodies/F.delayed.txt
+    aliases: [delayed_headers, status_page]
+    statuses: { vulnerable: 200, absent: 503 }
+    absent_body: bodies/D.error.html
+  G:
+    name: redirect-maze
+    title: "Controlled redirect maze"
+    media_type: text/html
+    body_file: bodies/G.maze.html
+    aliases: [redirect_maze, maze]
+    # The handoff caps this: same-origin targets only, and a bounded number of hops.
+    statuses: { vulnerable: 200, absent: 302 }
+    absent_body: bodies/D.error.html
+    redirect_target: /documents/
+    max_hops: 3
+
+# I1 - per-vhost (and per-path) profile selection. The rule is longest-prefix-wins, so a vhost
+# that really serves /api/ can answer API probes with E while everything else on the same vhost
+# answers with A. `default` applies to any path no prefix matches.
+selection:
+  default: A
+  prefixes:
+    "/api/": E
+    "/ldap/": C
+    "/ldapadmin/": C
+    "/phpldapadmin/": C
+    "/shibboleth-sp/": C
+    "/assets/": A
+    "/documents/": G
+    "/status": F
+    ".json": E
+    ".git/config": B
+    ".env": A
+
+# Streaming shape per profile (handoff section 12.2). The responder's own defaults are the
+# baseline; a profile may narrow them. Kept here rather than in code so a deployment can retune
+# the fingerprint without a code change, and so the gateway and the responder can be checked
+# against one another.
+stream_defaults:
+  min_chunk_bytes: 1
+  max_chunk_bytes: 3
+  min_chunk_delay_ms: 20
+  max_chunk_delay_ms: 60
+  max_response_duration_seconds: 5
+  max_response_bytes: 65536
+profiles_stream_overrides:
+  D: { max_response_duration_seconds: 3 }
+  F: { min_chunk_delay_ms: 120, max_chunk_delay_ms: 400, max_response_duration_seconds: 8 }

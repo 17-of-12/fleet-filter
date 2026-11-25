@@ -1,0 +1,24 @@
+{
+  "package": "web-tarpit",
+  "version": "1.1.1",
+  "registry": "https://registry.npmjs.org/",
+  "dist_tarball": "https://registry.npmjs.org/web-tarpit/-/web-tarpit-1.1.1.tgz",
+  "dist_integrity_sha512": "tvV7rCYa05fBuzjJv4g0peAZB5+canCw8O78ZD9/3/QFIUXKoX92qU48KNlMibet5XatR6heh+wRi6n6LPJ7sQ==",
+  "sha512_verified_locally": true,
+  "sha256": "71297330cf611ed6eef8da9b4ed9f3e5d502a81ab1e09b81ea9f083df4b6fec3",
+  "engines": {
+    "node": ">=18"
+  },
+  "executed_with": "node v22.23.3 (/usr/local/bin/node on build01.lab)",
+  "fetched_utc": "2026-11-14T08:19:00Z",
+  "fetched_by": "bin vendoring pass for Bundle A5 (also satisfies the vendoring half of B1)",
+  "audit": "data/research/upstream-web-tarpit-1.1.1-audit-2026-11-14.md",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "schema.sql",
+    "src",
+    "web-tarpit-1.1.1.tgz"
+  ]
+}

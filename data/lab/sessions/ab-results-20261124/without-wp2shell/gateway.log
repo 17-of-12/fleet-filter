@@ -1,0 +1,8 @@
+probe-tarpit-gateway 0.1.0 listening on 127.0.0.1:8500 [tls(cert=/home/user/projects/fleet-filter/var/lab-gw/tls/gw.crt)]
+policy version=lab-wordpress mode=serve posture=standard bind=127.0.0.1:8500 backend=http://10.20.0.226:8090 tls=yes alpn=h2+http/1.1 on_quarantined=inline deception=inline(detected=exploit-probe,quarantined=generic,drips=32) sha256=1de449813d4fca9b897f5f2295b21fe8e5501e5498ea3a4975b6bc2772307c18
+classify detection=/cgi-bin/%%32%65,/cgi-bin/%2e%2e,/cgi-bin/%2e.,/cgi-bin/.%%32%65,/cgi-bin/.%2e,/h2probe-
+spool dir=/home/user/projects/fleet-filter/var/ab/without-wp2shell/spool written=0 failed=0 min_interval_s=0 max_entries=10000
+policy on-quarantined=inline
+handshake failed from 127.0.0.1:49264: tls handshake eof
+map load failed (1 total): /home/user/projects/fleet-filter/var/ab/without-wp2shell/tarpit-ips.map: No such file or directory (os error 2)
+signal: SIGTERM

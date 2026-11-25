@@ -1,0 +1,20 @@
+# Daily renewal attempt with a randomised delay.
+#
+# Daily rather than weekly because a failed attempt should be retried on the next run rather than a
+# week later, and because the deploy hook only acts when certbot actually renewed something. The
+# randomised delay keeps a fleet of hosts from asking the same CA at the same second.
+#
+# 03:00-05:00 local: outside change windows, and late enough that a renewal that needs a human is
+# found the next morning rather than at the end of the day.
+[Unit]
+Description=Daily check for a renewable gateway TLS certificate
+Documentation=file:/usr/local/share/doc/fleet-filter/CERTIFICATES.md
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=7200
+Persistent=true
+Unit=fleet-filter-gateway-cert.service
+
+[Install]
+WantedBy=timers.target

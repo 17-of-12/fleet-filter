@@ -1,0 +1,141 @@
+# Project-owned Stage 3 container configuration - one file per target host.
+#
+# This is the source of truth for the generated Compose file. Nothing in the generated
+# artifact is hand-edited: `bin/render-container-compose.py` reads this file and writes
+# `container/compose.yaml`, and `container/preflight.sh` refuses to launch unless the
+# generated artifact still matches this configuration.
+#
+# The values here are the ones measured in `data/results/container-target-discovery-2026-11-14.md`
+# and decided in `docs/container/runtime-decision.md`. Changing a mount, a user, or the
+# SELinux toggle here is the only sanctioned way to change the canary.
+
+version: 1
+
+target:
+  hostname: lab-web01.lab
+  os: Oracle Linux Server 8.10
+  # Recorded, never changed by this project. The Stage 3 brief forbids altering host SELinux
+  # state or file contexts as a side effect of running a container.
+  selinux_mode_observed: permissive
+  observed_on: "2026-11-14"
+
+runtime:
+  name: podman
+  version: "4.9.4"
+  provider: container-tools:ol8 (ol8_appstream)
+  # Docker CE is not available from any enabled repository on this host; see the runtime
+  # decision record. The renderer refuses to emit Docker-only keys that Podman ignores.
+  compose_dialect: podman-compose
+
+image:
+  name: fleet-filter-apache
+  version: "0.1.0"
+  # Published to the local registry built on build01 (owner directive 2026-11-16: build on build01,
+  # deploy out). Every earlier image was built on lab-web01 itself, which works for one host and
+  # blocks a fleet rollout: a second web host cannot pull an image that only exists in another host's
+  # local store. Empty means "build locally only", the pre-2026-11-16 behaviour, still supported.
+  registry: build01.lab:5000
+  repository: fleet-filter/apache
+  # Pinned by digest, not by tag, so a rebuild is reproducible and a base-image refresh is a
+  # deliberate edit to this file rather than a surprise at build time.
+  base_image: docker.io/library/oraclelinux
+  base_image_digest: sha256:9225108d00fb6611ebc4a5eced166f27d9dcfeaa539fb127be79425f0da5e745
+  # Resolved from the `oraclelinux:8` tag on 2026-11-14 by `podman inspect` on the target host.
+  # The tag is tracked so a human can tell which release the digest is; the build uses the digest.
+  containerfile: container/Containerfile
+
+# V4: the canary is published on a loopback-only, dedicated port. The Stage 2 gateway is the
+# intended frontend path; nothing outside the host may reach the containerised runtime directly.
+publish:
+  - scheme: http
+    address: 127.0.0.1
+    host_port: 18080
+    container_port: 8080
+
+security:
+  # V2: the project-owned SELinux toggle. `false` means the project performs no SELinux
+  # integration at all - no `:z`/`:Z` mount suffixes, no `chcon`, no `restorecon`, no
+  # `setsebool` - and it must never be implemented by inventing a Compose key. V3: on an
+  # Enforcing host this value is a hard failure rather than a silent weakening.
+  selinux:
+    enabled: false
+  # Ids are chosen against the *host's* uid and gid databases, not just its passwd file. Measured
+  # on the target: uid 1001 is the login account `druser`, and uid 983 has no passwd entry but is
+  # the primary group of `wazuh` (gid 983), so files a container creates as 983 show up on the host
+  # as `983:wazuh` - the same class of confusion as the uid 1001 case, one layer down. 980 is free
+  # in both databases and sits next to the Stage 2 gateway account (fleet-filter-gw, uid 984).
+  run_as_user: 980
+  run_as_group: 980
+  # V5: capabilities are dropped wholesale. `cap_add` is the documented exception list and is
+  # deliberately empty: binding 8080 (>1024) needs no NET_BIND_SERVICE, and a read-only root
+  # filesystem with explicit tmpfs needs none either.
+  cap_drop: [ALL]
+  cap_add: []
+  no_new_privileges: true
+  seccomp: runtime_default
+  read_only_rootfs: true
+  tmpfs:
+    - /tmp
+    - /run/httpd
+  privileged: false
+  docker_socket_mount: false
+  namespaces:
+    pid: private
+    ipc: private
+    network: private
+  limits:
+    pids: 512
+    memory: 256m
+    cpus: "1.0"
+
+# V4 / U7: the complete mount surface. Long-form syntax with `create_host_path: false`, so a
+# missing source path is an error rather than a silently created empty directory - which is how
+# a containerised Apache ends up serving an empty site off a typo.
+mounts:
+  - source: /var/www/html
+    target: /var/www/html
+    read_only: true
+  - source: /var/www/cgi-bin
+    target: /var/www/cgi-bin
+    read_only: true
+  - source: /usr/share/httpd/icons
+    target: /usr/share/httpd/icons
+    read_only: true
+  - source: /usr/share/httpd/noindex
+    target: /usr/share/httpd/noindex
+    read_only: true
+  - source: /usr/share/phpldapadmin/htdocs
+    target: /usr/share/phpldapadmin/htdocs
+    read_only: true
+  - source: /usr/share/shibboleth
+    target: /usr/share/shibboleth
+    read_only: true
+  # Measured on the first canary run: the host's /var/log/httpd is 0700 root:root, so a container
+  # running as 1001 cannot write it and httpd dies with `AH00091: could not open error log file`.
+  # The canary therefore gets its own host directory rather than borrowing the native one, which
+  # also keeps the two log sets separable for filebeat. The native directory stays untouched.
+  - source: /var/log/fleet-filter-canary
+    target: /var/log/httpd
+    read_only: false
+  # The host's /var/lib/php/session is root:apache 0770, so the container user cannot write it
+  # either - the same class of problem as /var/log/httpd. Until the PHP delivery question is
+  # answered, the canary gets its own session directory rather than borrowing php-fpm's, and the
+  # native one is left alone.
+  - source: /var/lib/fleet-filter-canary/session
+    target: /var/lib/php/session
+    read_only: false
+
+# The canary's own Apache configuration is baked into the image (the Containerfile copies
+# `container/canary/`), not bind-mounted, so an in-container edit is impossible by construction and
+# the config a container runs is always the config the repo built it from. Only content and state
+# are mounted - see `mounts` above. The one exception is the Stage 1 enforcement map, which must
+# stay the host's live file so the container and the native vhosts enforce the same verdicts.
+extra_readonly_files:
+  - source: /etc/httpd/tarpit-ips.map
+    target: /etc/httpd/tarpit-ips.map
+  # Bundle X1: the canary's own Basic auth credential file. It is mounted rather than baked so the
+  # secret never enters the image, and the file is 0644 root:root (world-readable by design, like
+  # /etc/httpd/tarpit-ips.map) because the container user is 980 and the file has no group tie to it.
+  # The password lives in /root/.fleet-filter-canary-password on the host, same pattern as the console.
+  - source: /etc/fleet-filter-canary/htpasswd
+    target: /etc/fleet-filter-canary/htpasswd

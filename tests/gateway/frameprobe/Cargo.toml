@@ -1,0 +1,34 @@
+[package]
+name = "frameprobe"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92.0"
+description = "Bundle Q experiment: observe raw HTTP/2 frames before hyper's parser and enforce frame-level policy"
+
+# Deliberately NOT part of the gateway package (same reasoning as h2probe): the shipped artifact
+# pins one Cargo.lock, and an experiment must not be able to change it.
+#
+# Feature `hpack` answers Q4 (which properties need HPACK decoding versus raw framing). It is
+# optional because hpack 0.3.0 is a 2017-era crate: if it ever fails to build with the pinned
+# toolchain, the experiment still runs with `--no-default-features` and Q4 is answered from the
+# observe/compare path instead of the decoder.
+[features]
+default = ["hpack"]
+hpack = ["dep:hpack"]
+
+[dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "net", "time", "io-util", "macros", "sync"] }
+hyper = { version = "=1.12.0", default-features = false, features = ["server", "http1", "http2"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio", "server", "http1", "http2"] }
+http-body-util = { version = "=0.1.5" }
+bytes = "=1.11.1"
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring", "logging", "tls12"] }
+rustls-pemfile = { version = "=2.2.0", default-features = false, features = ["std"] }
+hpack = { version = "=0.3.0", optional = true }
+
+[profile.release]
+opt-level = 2
+lto = false
+codegen-units = 16
+strip = true

@@ -1,0 +1,1 @@
+{"schema_version":1,"subject_ip":"127.0.0.3","verdict":"confirmed","source":"probe-tarpit-gateway","author":"probe-tarpit-gateway","claim_key":"prefix:/wp-json/batch/v1","observed_at":1795543609,"evidence":{"method":"GET","path":"/wp-json/batch/v1","protocol":"HTTP/2.0","request_id":"t1795543609-4"}}

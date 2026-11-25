@@ -1,0 +1,33 @@
+# /etc/systemd/system/fleet-filter-webtree-audit.service
+# Project: Fleet-Filter (Bundle Z, Stage 4) - keeps the webtree report the console reads up to date.
+#
+# The console never runs an audit; it reads /var/lib/fleet-filter/webtree-report.json (web/sync.py ->
+# webtree_audits / webtree_files). Without this unit the console's Webtree page is a photograph of the
+# first scan, which is the same staleness problem the ui-sync timer solved for the controller cache.
+#
+# The script it runs resolves the container runtime (rootless vs rootful podman, or docker) and the
+# scanner image, publishes the report atomically, and exits 0 / 10 / 11 for clean / review / quarantine.
+# 10 and 11 are findings, not failures, and the script does not treat them as failures.
+#
+# Deployed on: build01.lab, lab-web01.lab. The ExecStart path is identical on both
+# hosts (installed from bin/webtree-scan-host.sh) so one unit file serves both, and the copy on a host
+# is refreshed from the repo rather than edited in place.
+[Unit]
+Description=fleet-filter: audit the Apache webtree with the Stage 4 scanner image
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/CONSOLE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Run as the deploy account, not root: on build01 the images we build live in the agent's
+# rootless store, and on lab-web01 the script escalates with `sudo -n podman`. One User= value
+# works on both because the script searches runtimes instead of assuming one.
+User=agent
+ExecStart=/usr/local/sbin/fleet-filter-webtree-scan
+# Measured on build01: 91 s for a full 3,879-file audit, 7 s incremental. The ceiling covers a full
+# scan on a slow host and still prevents a hung container from occupying the timer indefinitely.
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to this project are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Pre-1.0, a breaking change to the policy schema or the detection store bumps the minor version; the
+project will not cut a 1.0 until the policy format has survived a release without a schema change.
+
+## [Unreleased]
+
+### Added
+
+- Public exporter that derives a publishable tree, rewrites estate identifiers, and refuses to emit
+  one containing a forbidden token.
+- Signed policy distribution: a detached RSA signature over each digest, verified on the host with a
+  key provisioned out of band, before the policy is parsed or installed.
+- `bin/exploit-upstream.py`, and its gate: a contribution is complete only when the signature, the
+  verdict and a publishable recorded run are all present.
+- CI: the repository gate runs on every push and pull request, and fails a tree that only passes
+  with a dirty working copy.
+- MIT license, security policy, contribution guide and issue templates.
+
+### Changed
+
+- Request bodies have an aggregate memory budget, not only a per-request cap.
+- `X-Forwarded-For` is read from every header, right to left, so a client cannot name the address
+  the gateway judges.
+- Policy fetch refuses an unsigned digest unless explicitly allowed.
+- The README leads with the problem the project solves rather than with its directory layout.
+
+### Fixed
+
+- The renderer's default spool directory was outside the gateway unit's writable paths, so detections
+  were written nowhere under `ProtectSystem=strict`.
+- A newline in a bypass reason could inject a map entry and disable enforcement.
+- The responder accepted a claim signature from any client, so the traffic source could write the
+  assertion that decided its own quarantine.
+- `https://` backends were accepted by the policy parser although no upstream TLS connector exists.
+- `max_connections_per_source = 0` refused every connection instead of meaning unlimited.
+
+## [0.1.0] - 2026-11-25
+
+First public release.
+
+### Added
+
+- Rust reverse proxy: HTTP/1.1 and HTTP/2 inbound, HTTP/1.1 outbound, request-shape detection,
+  bounded body-marker inspection, quarantine map with hot reload, and a bounded deception response.
+- Three deployment topologies (`edge-tls`, `behind-lb-plain`, `behind-lb-tls`) rendered from the
+  signature store and validated with the gateway's own parser.
+- Signature store with per-variant provenance and test fixtures; a renderer that projects it into
+  each enforcement point.
+- Exploit evidence ledger: an attack is only `blocked` once it was shown working without the control
+  and failing through it, with the recorded run committed next to the claim.
+- Daily CVE triage: NVD, KEV and EPSS through an inventory of the estate, producing a ranked queue
+  and a delta against the previous run.

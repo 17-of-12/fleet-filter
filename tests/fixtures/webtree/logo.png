@@ -1,0 +1,1 @@
+<?php $x=base64_decode("Zm9vYmFyYmF6"); eval($x); ?>

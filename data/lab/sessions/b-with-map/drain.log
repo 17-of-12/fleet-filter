@@ -1,0 +1,9 @@
+# argv: /home/user/projects/fleet-filter/.venv/bin/python /home/user/projects/fleet-filter/controller/adaptive-tarpit.py --db /home/user/projects/fleet-filter/var/lab-gw/state.db --map /home/user/projects/fleet-filter/var/lab-gw/tarpit-ips.map drain-spool --spool /home/user/projects/fleet-filter/var/lab-gw/spool --render
+# exit: 0
+
+added      127.0.0.1        confirmed (prefix:/h2probe-)
+added      127.0.0.1        confirmed (prefix:/wp-json/batch/v1)
+rendered 1 entries -> /home/user/projects/fleet-filter/var/lab-gw/tarpit-ips.map
+summary: 2 filed, 0 allowlisted, 0 failed (2 files)
+
+

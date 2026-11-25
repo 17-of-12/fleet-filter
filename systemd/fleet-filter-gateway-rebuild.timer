@@ -1,0 +1,15 @@
+[Unit]
+# Project: Fleet-Filter (Bundle N6) - hourly check for gateway source changes on the build host.
+Description=fleet-filter-gateway: hourly rebuild check (Bundle N6)
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/gateway/ADR-0001.md
+
+[Timer]
+# Hourly rather than on every commit: the trigger is a content fingerprint, so a missed interval is
+# recovered by `Persistent=true` and the check itself is one hash when nothing changed.
+OnCalendar=hourly
+AccuracySec=1min
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

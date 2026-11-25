@@ -1,0 +1,23 @@
+# ruff configuration for the Python side of Fleet-Filter (operating rule 15).
+#
+# Scope: the controller, the responder, the renderers in bin/, and the test suites. The gateway is
+# Rust and is linted by `cargo clippy` through bin/check.sh instead.
+#
+# Why these settings:
+#   line-length = 120 - the existing code is written at 100-120 columns. Reformatting 593 lines to
+#                       ruff's 88-column default would bury every future diff in whitespace churn,
+#                       so the width was raised to match the code instead of rewriting the code.
+#   select = E, F, W  - pycodestyle errors, pyflakes, and warnings: the rules that identify real
+#                       defects (undefined names, unused imports, bad escapes, ambiguous names)
+#                       without imposing a style rewrite. Widening to I/UP/B/SIM is a separate,
+#                       deliberate change so a lint-policy change is reviewable on its own.
+#   target-version    - py38: the oldest interpreter shape the code may assume. The deployed
+#                       interpreters are Python 3.6.8 and 3.9 on lab-web01 (measured), and the test
+#                       suites are executed under both 3.9 and 3.12 via AT_TEST_PYTHONS.
+
+line-length = 120
+target-version = "py38"
+
+[lint]
+select = ["E", "F", "W"]
+exclude = [".venv", "gateway", "archive", "tmp"]

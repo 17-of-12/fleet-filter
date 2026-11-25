@@ -1,0 +1,25 @@
+[Unit]
+Description=adaptive-tarpit: purge expired leases and re-render the Apache map
+# Project: Fleet-Filter (see ~/projects/Fleet-Filter/SKILL.md)
+Documentation=https://github.com/crumrine/web-tarpit
+
+[Service]
+Type=oneshot
+# Order is deliberate. Expiry is the critical path - if it fails, nothing else here should
+# pretend to have run - so it comes first and a failing drain cannot block it.
+# The drain is not suffixed with `|| true` on purpose: a malformed claim should leave the
+# unit in `failed` (visible) while quarantining the file so the next run is clean, rather
+# than being silently swallowed.
+ExecStart=/usr/local/bin/adaptive-tarpit expire --render
+# Bundle L4 / Bundle R: fold queued claims (tarpit responder today, Stage 2 gateway later)
+# into the store and re-render, so a Tier 1 hit reaches the Tier 0 map without giving any
+# network-facing process write access to the database.
+ExecStart=/usr/local/bin/adaptive-tarpit drain-spool --render
+# Bundle R: the Stage 2 gateway keeps its own spool, so the same timer drains both. Separate
+# directories rather than one shared queue: each producer's queue can be inspected, bounded, and
+# permissioned on its own, and a poison file from one producer cannot be confused with the other's.
+ExecStart=/usr/local/bin/adaptive-tarpit drain-spool --spool /var/lib/fleet-filter-gateway/spool --render
+Nice=10
+
+[Install]
+WantedBy=timers.target

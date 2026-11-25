@@ -1,0 +1,29 @@
+{
+  "what": "CL.TE request smuggling against a deliberately lenient HTTP/1.1 backend, direct versus through the gateway",
+  "why_deterministic": "The effect is a parser disagreement, not a race: the same bytes always produce the same two-request interpretation at a Content-Length-first backend.",
+  "fixture_caveat": "The backend (lab/smuggle/raw_backend.py) is lenient by design - Content-Length wins over Transfer-Encoding - because that disagreement is what smuggling is. It is a measurement instrument, not a claim about any product.",
+  "payload": "CL:6 + TE:chunked, body '0\\r\\n\\r\\nGET /smuggled-marker HTTP/1.1'",
+  "direct": {
+    "backend_connections": 2,
+    "request_lines_in_smuggled_connection": 2,
+    "observed": [
+      "POST / HTTP/1.1",
+      "GET /smuggled-marker HTTP/1.1"
+    ]
+  },
+  "through_gateway": {
+    "backend_connections": 3,
+    "request_lines_in_the_forwarded_connection": 1,
+    "observed": [
+      "POST / HTTP/1.1"
+    ],
+    "forwarded_bytes": "no Content-Length, no Transfer-Encoding, no body: the gateway consumed the framing itself and reframed the request",
+    "smuggled_request_arrived": false
+  },
+  "controls": {
+    "normal GET /health through the gateway": "200, backend logged it",
+    "raw client to backend": "200"
+  },
+  "mechanism": "reframe",
+  "note": "Stripping hop-by-hop headers (transfer-encoding, te) and re-framing the body are what close this class. A gateway that forwarded the client's framing verbatim would reproduce the desync."
+}
