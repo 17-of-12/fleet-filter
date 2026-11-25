@@ -45,21 +45,36 @@ DESCRIPTION = "Virtual patching and bounded deception for web servers, with an e
 TOPICS = ["security", "waf", "reverse-proxy", "rust", "http2", "incident-response",
           "virtual-patching"]
 
-# The check name is the workflow job name; a status check that does not exist on a pull request can
-# never pass, so the required context has to match it exactly.
-PROTECTION = {
-    "required_status_checks": {"strict": True, "contexts": ["gate"]},
-    "enforce_admins": True,
-    "required_pull_request_reviews": {
-        "dismiss_stale_reviews": True,
-        "require_code_owner_reviews": False,
-        "required_approving_review_count": 1,
-    },
-    "restrictions": None,
-    "required_linear_history": True,
-    "allow_force_pushes": False,
-    "allow_deletions": False,
-    "required_conversation_resolution": True,
+# Protection is a *ruleset* rather than the classic branch-protection rule, for one reason that
+# matters operationally: a ruleset can name a bypass actor, and the release bot has to publish to
+# main. Classic protection cannot exempt an app, and an app cannot approve its own pull request, so
+# classic protection and automated publishing cannot both be true.
+#
+# The bypass is a deliberate, recorded exception: humans need a review, the release job does not,
+# because what it publishes is an export of a tree that already passed the same gate.
+RULESET_NAME = "main protection"
+RULESET = {
+    "name": RULESET_NAME,
+    "target": "branch",
+    "enforcement": "active",
+    "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+    "bypass_actors": [{"actor_id": 5922290, "actor_type": "Integration", "bypass_mode": "always"}],
+    "rules": [
+        {"type": "pull_request", "parameters": {
+            "required_approving_review_count": 1,
+            "dismiss_stale_reviews_on_push": True,
+            "require_code_owner_review": False,
+            "require_last_push_approval": False,
+            "required_review_thread_resolution": True,
+        }},
+        {"type": "required_status_checks", "parameters": {
+            "strict_required_status_checks_policy": True,
+            "required_status_checks": [{"context": "gate"}],
+        }},
+        {"type": "non_fast_forward"},
+        {"type": "deletion"},
+        {"type": "required_linear_history"},
+    ],
 }
 
 
@@ -100,6 +115,7 @@ def apply_all(token_value, dry_run=False):
     attempts = []
 
     def send(name, path, method, body, accept="application/vnd.github+json"):
+        """Perform one setting change and record what the API said about it."""
         if dry_run:
             attempts.append((name, "dry-run", json.dumps(body)[:90]))
             return
@@ -112,17 +128,39 @@ def apply_all(token_value, dry_run=False):
          {"description": DESCRIPTION})
     send("topics", "/repos/%s/%s/topics" % (OWNER, REPO), "PUT", {"names": TOPICS},
          accept="application/vnd.github+json")
-    send("branch protection", "/repos/%s/%s/branches/main/protection" % (OWNER, REPO), "PUT",
-         PROTECTION)
+    if not dry_run:
+        # Removing the classic rule first: while it exists the stricter of the two applies, and its
+        # lack of a bypass actor would keep rejecting the release job.
+        status, out = call("/repos/%s/%s/branches/main/protection" % (OWNER, REPO), "DELETE",
+                           None, token_value)
+        attempts.append(("classic protection removed", status, out if isinstance(out, str) else "ok"))
+        existing = None
+        status, listed = call("/repos/%s/%s/rulesets" % (OWNER, REPO), token_value=token_value)
+        if isinstance(listed, list):
+            existing = next((r for r in listed if r.get("name") == RULESET_NAME), None)
+        if existing:
+            status, out = call("/repos/%s/%s/rulesets/%d" % (OWNER, REPO, existing["id"]), "PUT",
+                               RULESET, token_value)
+            attempts.append(("ruleset updated", status, out if isinstance(out, str) else "ok"))
+        else:
+            status, out = call("/repos/%s/%s/rulesets" % (OWNER, REPO), "POST", RULESET,
+                               token_value)
+            attempts.append(("ruleset created", status, out if isinstance(out, str) else "ok"))
     if not dry_run:
         # Code-security switches live in one object; send them together so a partial apply is visible.
         security = {"security_and_analysis": {
-            "private_vulnerability_reporting": {"status": "enabled"},
             "secret_scanning": {"status": "enabled"},
             "secret_scanning_push_protection": {"status": "enabled"},
         }}
         status, out = call("/repos/%s/%s" % (OWNER, REPO), "PATCH", security, token_value)
-        attempts.append(("code security", status, out if isinstance(out, str) else "ok"))
+        attempts.append(("secret scanning", status, out if isinstance(out, str) else "ok"))
+        # Private vulnerability reporting is not part of `security_and_analysis` on write: including
+        # it there returns 200 and changes nothing, which is worse than an error. It has its own
+        # endpoint, and its own GET to verify it.
+        status, out = call("/repos/%s/%s/private-vulnerability-reporting" % (OWNER, REPO), "PUT",
+                           {"enabled": True}, token_value)
+        attempts.append(("private vulnerability reporting", status,
+                         out if isinstance(out, str) else "ok"))
         for name, path in (("dependabot alerts", "/repos/%s/%s/vulnerability-alerts" % (OWNER, REPO)),
                            ("automated security fixes",
                             "/repos/%s/%s/automated-security-fixes" % (OWNER, REPO))):
@@ -144,33 +182,45 @@ def verify(token_value):
     results.append(("topics", ",".join(TOPICS), ",".join(actual_topics or []),
                     set(actual_topics or []) == set(TOPICS)))
 
-    status, protection = call("/repos/%s/%s/branches/main/protection" % (OWNER, REPO),
-                             token_value=token_value)
-    if status != 200:
-        results.append(("branch protection", "enabled", "HTTP %s" % status, False))
+    status, listed = call("/repos/%s/%s/rulesets" % (OWNER, REPO), token_value=token_value)
+    rule = next((r for r in listed if r.get("name") == RULESET_NAME), None) if isinstance(listed, list) else None
+    if not rule:
+        results.append(("branch ruleset", "present", "absent", False))
     else:
-        reviews = protection.get("required_pull_request_reviews") or {}
-        checks = protection.get("required_status_checks") or {}
-        for name, expected, actual in (
-            ("  require PR review", 1, reviews.get("required_approving_review_count")),
-            ("  dismiss stale reviews", True, reviews.get("dismiss_stale_reviews")),
-            ("  required checks", ["gate"], checks.get("contexts")),
-            ("  strict (up to date)", True, checks.get("strict")),
-            ("  linear history", True, (protection.get("required_linear_history") or {}).get("enforced")),
-            ("  force pushes", False, (protection.get("allow_force_pushes") or {}).get("enabled")),
-            ("  deletions", False, (protection.get("allow_deletions") or {}).get("enabled")),
-            ("  enforce on admins", True, (protection.get("enforce_admins") or {}).get("enabled")),
-            ("  conversation resolution", True,
-             (protection.get("required_conversation_resolution") or {}).get("enabled")),
-        ):
-            results.append((name, expected, actual, actual == expected))
+        status, detail = call("/repos/%s/%s/rulesets/%d" % (OWNER, REPO, rule["id"]),
+                             token_value=token_value)
+        types = {r["type"] for r in detail.get("rules", [])} if isinstance(detail, dict) else set()
+        bypass = {b.get("actor_id") for b in (detail.get("bypass_actors") or [])} \
+            if isinstance(detail, dict) else set()
+        results.append(("ruleset enforced", "active", detail.get("enforcement"),
+                        detail.get("enforcement") == "active"))
+        results.append(("  require pull request", True, "pull_request" in types,
+                        "pull_request" in types))
+        results.append(("  required check gate", True,
+                        any(r["type"] == "required_status_checks" and
+                            any(c.get("context") == "gate"
+                                for c in r.get("parameters", {}).get("required_status_checks", []))
+                            for r in detail.get("rules", [])),
+                        any(r["type"] == "required_status_checks" and
+                            any(c.get("context") == "gate"
+                                for c in r.get("parameters", {}).get("required_status_checks", []))
+                            for r in detail.get("rules", []))))
+        results.append(("  linear history", True, "required_linear_history" in types,
+                        "required_linear_history" in types))
+        results.append(("  no force push", True, "non_fast_forward" in types,
+                        "non_fast_forward" in types))
+        results.append(("  no deletion", True, "deletion" in types, "deletion" in types))
+        results.append(("  release bot bypass", 5922290, sorted(bypass), 5922290 in bypass))
 
     security = repo.get("security_and_analysis") or {}
-    for name, key in (("private vulnerability reporting", "private_vulnerability_reporting"),
-                      ("secret scanning", "secret_scanning"),
+    for name, key in (("secret scanning", "secret_scanning"),
                       ("push protection", "secret_scanning_push_protection")):
         value = (security.get(key) or {}).get("status")
         results.append((name, "enabled", value, value == "enabled"))
+    status, reporting = call("/repos/%s/%s/private-vulnerability-reporting" % (OWNER, REPO),
+                             token_value=token_value)
+    value = reporting.get("enabled") if isinstance(reporting, dict) else None
+    results.append(("private vulnerability reporting", True, value, value is True))
 
     status, _ = call("/repos/%s/%s/vulnerability-alerts" % (OWNER, REPO), token_value=token_value)
     results.append(("dependabot alerts", 204, status, status == 204))
