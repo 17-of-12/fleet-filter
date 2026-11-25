@@ -29,8 +29,8 @@ sudo podman run -d --name ff-httpd-2.4.66 --network host \
 
 # labelled traffic for the per-line model: every request carries its label in the User-Agent, so the
 # label is recovered from the log rather than guessed by a human
-bin/lab-capture.py --host 10.20.0.225 --port 8080 --state /var/lib/ff-httpd/2.4.66 \
-     --ffuf /path/to/ffuf --out data/lab/traffic-8080-10.20.0.225.jsonl
+bin/lab-capture.py --host <victim-address> --port 8080 --state /var/lib/ff-httpd/2.4.66 \
+     --ffuf /path/to/ffuf --out data/lab/traffic-8080-<victim-address>.jsonl
 ```
 
 Two versions on one host: give the second instance `LISTEN_PORT=8081 TLS_PORT=8444` and a different

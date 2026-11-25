@@ -1,8 +1,8 @@
 # Responder interface — what the gateway may call, and what stays outside it
 
-Status: **normative for Stage 2**. Applies to `tarpit/server/server.py` (the reference
-implementation, deployed on lab-web01), to the inline responder in `gateway/src/deception.rs`
-(T1), and to any future responder — a Rust rewrite or a container — that wants to sit behind the
+This is the normative interface. It applies to `tarpit/server/server.py` (the reference
+implementation), to the inline responder in `gateway/src/deception.rs`, and to any future responder
+— a Rust rewrite or a container — that wants to sit behind the
 gateway.
 
 ## Why an interface at all
@@ -83,68 +83,11 @@ producer's spool, and nothing but the controller writes SQLite.
   for at most `max_drip_ms`. A stateful responder's cost is its own problem, which is the point of
   keeping it outside.
 
-## Gaps in this interface (recorded, not smoothed over)
+## Known divergences
 
-1. **`Server` differs between implementations.** The inline responder says
-   `fleet-filter-gateway/0.1.0`; the Python responder can be configured to match the real backend.
-   For the deception to hold, the inline path needs a configurable banner. Not fixed here because it
-   changes what a client sees on a live host, and that deserves its own measurement.
-2. **No machine-readable schema for the HTTP contract.** This file is prose. A container image or a
-   Rust rewrite would be reviewed against prose; if a third implementation appears, the contract
-   should become a fixture (a recorded request/response set) before that happens.
-3. **The reference responder had no `/health`** - **fixed 2026-11-14**. `GET /health`
-   now answers `200` with a JSON document in ~1 ms on lab-web01 while the same process still serves
-   `/ai.html` in 5.04 s, and the probe files no claim. The body carries the responder's own
-   fingerprint (banner, chunk size/delay, drip cap, whether reporting is enabled), so a mis-deployed
-   responder is visible from its health answer rather than only from a unit diff.
-4. **Response profiles are not per-signature yet** - **fixed 2026-11-16, and the
-   original wording was wrong about the mechanism.** The responder never selected "by status code
-   from `index.json`": `tarpit/server/server.py` reads `X-Tarpit-Signature`, looks the value up in
-   `signature_responses`, and passes the result to `profiles.select()` as `signature_profile`,
-   which ranks first above the path prefix and the default. What was actually missing was the data
-   on the host: `/opt/tarpit/signatures.yaml` on lab-web01 still contained only `CVE-2026-119618`,
-   so the WP2Shell variants added to `controller/signatures/signatures.yaml` had no pairing on the
-   box and every WP2Shell request fell through to the default profile. The store is now deployed
-   from the repo (backup `/root/signatures.yaml.pre-wp2shell-*`) and the pairing table was measured
-   end to end on lab-web01:
-
-   | `X-Tarpit-Signature` | store pairing | measured |
-   |---|---|---|
-   | *(absent)* | no pairing, resolves by path/default to A | `200`, 1558 B |
-   | `CVE-2026-119618/probe_path` | D `slow_404_app_shaped`, absent | `404`, 199 B |
-   | `CVE-2026-119618/h2c_preface_on_http1_only` | D via `slow_400` alias | `400`, 199 B |
-   | `CVE-2026-119618/bodyless_ct` | A `generic_slow`, vulnerable | `200`, 1558 B |
-   | `CVE-2026-63030/batch_route_pretty` | D `slow_404_app_shaped` | `404`, 199 B |
-   | `CVE-2026-63030/batch_route_query` | D `slow_404_app_shaped` | `404`, 199 B |
-   | `CVE-2026-60137/author_not_in_injected` | D `slow_404_app_shaped` | `404`, 199 B |
-   | `CVE-2026-63030` (bare CVE) | signature default | `404`, 199 B |
-   | `unknown-sig` | none, falls through to A | `200`, 1558 B |
-
-   Two contract details this surfaced, neither previously written down:
-
-   * **The header's key format is `CVE/<variant>`, not `CVE:<variant>`.** `profiles.load_signature_responses`
-     keys each variant three ways - `CVE-2026-119618/0`, `CVE-2026-119618/probe_path`, and the bare
-     `probe_path` - plus `CVE-2026-119618` for the signature default. A caller that sends the
-     colon form the gateway's spool uses for `claim_key` (`CVE-2026-119618:probe_path`) matches
-     nothing and silently gets the default profile. Gap 2 (no machine-readable contract) is why
-     this was only discoverable by reading the loader.
-   * **The responder's pairings come from the signature store, not from `tarpit/profiles/catalogue.yaml`.**
-     The catalogue names and aliases the profiles; `server.py` builds `signature_responses` from
-     `--signature-store`. An earlier attempt to also render a `signature_responses:` block into the
-     catalogue was reverted: nothing reads it, and a second copy of a mapping that the code derives
-     elsewhere is the drift this project has already been bitten by three times.
-
-
-## Measured divergence, 2026-11-24
-
-Two halves of this contract were not met, and both were found by reading the code rather than by a
-test:
-
-| Half | Before | After |
+| divergence | current state | tracked as |
 |---|---|---|
-| **Shape** | The gateway `sleep()`ed the profile delay and then wrote the whole body (a latency tarpit); the responder dripped 1-3 bytes 20-60 ms apart. One request distinguished them. | Fixed: `deception::DripBody` streams the static body in `chunk_size` pieces with `chunk_delay_ms` gaps, both defaulting to the catalogue's `stream_defaults` (3 bytes, 50 ms), and declares `Content-Length` because the responder does. |
-| **Body** | The gateway serves short compile-time static bodies (a 150-byte 403); the responder serves the reviewed `/opt/tarpit/responses/403.html` (3539 bytes, the Apache test page). A client told the two apart by content alone, which contradicts "one fake application". | **Still divergent.** The planned fix is to generate the gateway's bodies from `tarpit/profiles/catalogue.yaml` at build time. Until then this document must not claim body parity. |
-
-The lesson worth keeping: the previous version of this file claimed `a client cannot tell which one
-answered`. Nothing measured it. A claim in a contract document is not evidence that the contract is
-met, and three of the four fields in it were true.
+| `Server` banner | inline responder sends `fleet-filter-gateway/0.1.0`; the Python responder can be configured to match the origin | roadmap: configurable banner |
+| response body | gateway serves a short compile-time body; the responder serves the full profile page | roadmap: generate both from `tarpit/profiles/catalogue.yaml` |
+| HTTP contract | this document is prose; no machine-readable fixture set exists | roadmap: record fixtures |
+| drip shape | met: `deception::DripBody` streams in `chunk_size` pieces with `chunk_delay_ms` gaps and declares `Content-Length` | - |

@@ -244,6 +244,7 @@ The most useful contribution is a reproducible, narrowly scoped security improve
 
 Start with these references:
 
+- [Roadmap](ROADMAP.md) - planned work that does not exist yet
 - [Documentation index](docs/README.md) - what to read for deploying, operating or contributing
 - [Exploit corpus and verification](docs/EXPLOIT-CORPUS.md) - the evidence ledger
 - [Signed policy distribution](docs/operations/POLICY-DISTRIBUTION.md)

@@ -76,7 +76,7 @@ instead of inferred from a number.
 `cmd_claim` is the path that matters operationally: it is what fail2ban's `f2b-fleet-filter` action
 invokes, and it is the path any operator tooling exercises. The Wazuh
 active-response ingest path (`cmd_ingest`) still claims with the flat default TTL; Wazuh active
-response is not yet selected on lab-web01 (its manager still maps to `firewall-drop`), so wiring the
+response is not selected by default in the shipped configuration (the manager maps to `firewall-drop`), so wiring the
 ladder there is scheduled with the Wazuh cutover rather than being asserted now.
 
 ## Verification
