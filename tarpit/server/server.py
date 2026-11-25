@@ -68,7 +68,7 @@ NOT_FOUND_BODY = (
 # The real lab-web01 vhost answers 403 (not 404) for `/`, because /var/www/html has
 # no index.html and Options -Indexes applies. A tarpit that answers 404 where the
 # real server answers 403 is teaching the client something is wrong (see
-# docs/DETECTION-INPUTS.md 4: answer correctly *and* slowly).
+# docs/spec/DETECTION-INPUTS.md 4: answer correctly *and* slowly).
 FORBIDDEN_BODY = (
     "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n"
     "<html><head><title>403 Forbidden</title></head>\n"

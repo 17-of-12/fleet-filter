@@ -1,6 +1,6 @@
 # Concurrency and resource ceilings
 
-**Bundle H1** · written 2026-11-15 · applies the measured ceiling from `data/results/worker-economics-2026-11-15.md`
+Written 2026-11-15 from a measured comparison of listener costs on the reference host.
 
 This file is an **index, not a source of truth**. Every value below is owned by the file in its
 "Authoritative source" column; restating them here is only useful if this file also says where to go
@@ -16,7 +16,7 @@ ssh agent@lab-web01.lab 'sudo grep -hE "max_connections|max_concurrent_drips|max
 
 ## The measured number this bundle is built on
 
-Bundle D measured the responder on lab-web01 at two concurrency levels and the answer was not the number
+A measured comparison at two concurrency levels showed the answer was not the number
 the brief assumed:
 
 | Measurement | Result |

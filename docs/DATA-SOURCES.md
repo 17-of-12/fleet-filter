@@ -44,7 +44,7 @@ this use.
 | Packet Storm | decommissioned RSS 2025-10-23; states programmatic extraction "comes at a cost" and points at a paid API. The NVD exploit tag still gives us the URL, which is provenance rather than a feed. |
 | Vulners, Sploitus and similar aggregators | API access is contractual, and their terms are not ones this project can pass on to its users. |
 | General code search (GitHub search, grep.app) | not a license problem - a determinism problem. A relevance-ranked result set cannot be replayed, so it cannot be evidence. |
-| GitHub Advisory Database | CC-BY-4.0 scraped: permissive, but it covers package ecosystems rather than request-visible bugs, so it is not wired in. Add it if the estate starts serving npm/PyPI artifacts. |
+| GitHub Advisory Database | CC-BY-4.0 scraped: permissive, but it covers package ecosystems rather than request-visible bugs, so it is not wired in. Add it if the monitored estate starts serving npm/PyPI artifacts. |
 
 ## The rule this establishes
 

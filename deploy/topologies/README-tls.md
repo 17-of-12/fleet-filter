@@ -12,7 +12,7 @@ systemctl enable --now fleet-filter-gateway-cert.timer   # daily renew, no-op un
 
 The deploy hook installs the material where the policy says the gateway reads it, reloads, and then
 reads the served certificate back to prove the new one is in service - rolling back if it is not.
-See `docs/CERTIFICATES.md`.
+See `docs/operations/CERTIFICATES.md`.
 
 `behind-lb-tls` has two TLS legs and therefore two certificates that can expire: the balancer's for
 clients, and this pool member's for the balancer. Both need a renewal path and a days-remaining

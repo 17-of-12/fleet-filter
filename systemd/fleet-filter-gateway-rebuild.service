@@ -3,7 +3,7 @@
 # This unit runs on the build host (currently build01.lab), not on the fleet targets:
 # it produces artifacts, it does not serve traffic.
 Description=fleet-filter-gateway: rebuild on source change (Bundle N6)
-Documentation=file:///home/agent/projects/Fleet-Filter/docs/gateway/ADR-0001.md
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/design/ADR-0001.md
 
 [Service]
 Type=oneshot

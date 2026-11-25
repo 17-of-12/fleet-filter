@@ -10,5 +10,5 @@
 #
 # Versions are pinned so a later session reproduces the same parser and linter behaviour instead of
 # discovering that a minor release changed a rendered rule or a lint verdict.
-PyYAML==6.0.3
+PyYAML==6.0.4
 ruff==0.17.6

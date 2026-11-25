@@ -23,7 +23,7 @@
 //!
 //! # Relationship to the external responder
 //!
-//! `docs/gateway/responder-interface.md` defines the contract the Python responder satisfies. That
+//! `docs/spec/responder-interface.md` defines the contract the Python responder satisfies. That
 //! contract has two halves and this module used to meet only one of them:
 //!
 //! * **Shape.** The responder drips 1-3 bytes at a time, 20-60 ms apart, capped at 5 s. The inline
@@ -123,7 +123,7 @@ pub const DEFAULT_PER_CONNECTION_MAX_BYTES: usize = 65_536;
 
 /// The `Server` value the inline path sends when a policy does not name one.
 ///
-/// Gap 1 in `docs/gateway/responder-interface.md`: an inline answer that says
+/// Gap 1 in `docs/spec/responder-interface.md`: an inline answer that says
 /// `fleet-filter-gateway/0.1.0` tells the adversary they are being served by the tarpit, which is
 /// the one piece of feedback that teaches a scanner to stop probing. The banner is now configurable
 /// rather than hardcoded, but the default keeps the existing text on purpose - changing what a live

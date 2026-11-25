@@ -1,7 +1,7 @@
 [Unit]
 # Project: Fleet-Filter - daily image retention on the build host.
 Description=fleet-filter: daily container image retention (build host hygiene)
-Documentation=file:///home/agent/projects/Fleet-Filter/docs/gateway/ADR-0001.md
+Documentation=file:///home/agent/projects/Fleet-Filter/docs/design/ADR-0001.md
 
 [Timer]
 # Daily rather than hourly: retention is about weeks of accumulated builds, not the last commit, and
