@@ -37,7 +37,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache the cargo target directory
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/fleet-filter-gateway/target
           key: cargo-${{ runner.os }}-${{ hashFiles('gateway/Cargo.lock') }}
