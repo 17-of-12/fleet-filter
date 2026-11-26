@@ -14,9 +14,11 @@ document says exactly what is depended on so the dependency can be pinned, repla
 | a local model provider | configured in `~/.pi/agent/settings.json` | The loop must not depend on a remote API |
 | the project skill | `skills/exploit-signature-pipeline.md` in this repository | Loaded into the agent's system prompt; the workflow itself |
 
-`bin/pi-preflight.sh` checks all four and exits non-zero with the missing item named. The worker runs
-it before dispatching, so a broken runtime fails as a broken runtime rather than as an agent that
-quietly does nothing.
+`bin/pi-preflight.sh` checks each of the above, plus the completion checklist, and exits non-zero
+naming the missing item. The worker runs it before dispatching, so a broken runtime fails as a broken
+runtime rather than as an agent that quietly does nothing. It cannot prove the provider answers - only
+that one is configured - which is why a session that reaches the model and fails is still the test that
+matters.
 
 ## How the runtime is driven
 

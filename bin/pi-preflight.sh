@@ -25,6 +25,13 @@ if [ -x "$PI_BIN" ]; then
     echo "pi-preflight: pi ${V}"
 fi
 
+SETTINGS="${HOME}/.pi/agent/settings.json"
+[ -r "$SETTINGS" ] ||
+    die "no pi settings at ${SETTINGS}: the session would fall back to whatever default is compiled in"
+grep -q '"defaultProvider"[[:space:]]*:[[:space:]]*"[^"]' "$SETTINGS" 2>/dev/null ||
+    die "${SETTINGS} names no defaultProvider; the local-model policy is not in force"
+echo "pi-preflight: provider configured in ${SETTINGS}"
+
 [ -r "${HOME}/.pi/agent/extensions/subagent/index.ts" ] ||
     die "the subagent extension is not installed under ${HOME}/.pi (a release cannot be reviewed without it)"
 echo "pi-preflight: subagent extension present"
