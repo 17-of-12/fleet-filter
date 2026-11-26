@@ -21,10 +21,6 @@ import sys
 import time
 import urllib.request
 
-try:
-    import jwt
-except ImportError:  # pragma: no cover
-    sys.exit("github-token: pyjwt is required (host python3, not .venv)")
 
 INSTALLATION = 185802080
 CLIENT_ID = "Iv23liiFyTPUobYIdrcl"
@@ -32,7 +28,11 @@ KEY = os.path.expanduser("~/.config/fleet-filter/pragma-17of12.pem")
 
 
 def token():
-    """Mint an installation token from the App key."""
+    """Mint an installation token from the App key, importing jwt lazily for the same reason."""
+    try:
+        import jwt
+    except ImportError:  # pragma: no cover
+        sys.exit("github-token: pyjwt is required (host python3, not .venv)")
     with open(KEY) as handle:
         private = handle.read()
     now = int(time.time())

@@ -51,6 +51,15 @@ What this project depends on from it:
 If the extension's agent-definition format changes, `bin/review-packet.sh` and the release contract in
 `bin/release-cve.sh` are what need updating.
 
+## The review loop runs on its own timer
+
+A session that opens a pull request has a wall-clock budget, and reviewing properly does not fit in
+whatever is left of it. So the review is its own unit: `bin/pr-review-worker.sh` on a ten-minute
+timer asks "is there an open release pull request with a green gate and no verdict", and if there is,
+it dispatches a session that spawns an adversarial reviewer, verifies its claims, posts the verdict and
+merges on PASS. The queue is the pull requests themselves, so a session that times out leaves work for
+the next one instead of leaving it for a person.
+
 ## Why not a bespoke harness
 
 Because the interesting part is not the process plumbing. Fetching a CVE, reading a PoC, writing a
