@@ -23,6 +23,12 @@ project will not cut a 1.0 until the policy format has survived a release withou
 
 ### Changed
 
+- The CVE check runs every four hours instead of nightly, with timestamped run directories and KEV/EPSS
+  cached for six hours. Deferred CVEs are recorded and re-checked rather than dropped when they age out
+  of the triage window.
+- `bin/publish-review.py` deletes the merged `release/` branch on both merge paths, so a merge posted
+  through the verdict path stops leaving the branch behind; the guard accepts only `release/` refs, so
+  `main` and dependency branches cannot be deleted by it.
 - Request bodies have an aggregate memory budget, not only a per-request cap.
 - `X-Forwarded-For` is read from every header, right to left, so a client cannot name the address
   the gateway judges.
