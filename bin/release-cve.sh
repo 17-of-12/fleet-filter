@@ -86,8 +86,16 @@ git -C "$REPO" merge --ff-only "cve/${CVE}" || die "not a fast-forward; rebase t
 git -C "$REPO" push -q origin main || die "could not push main"
 
 note "publishing through a pull request"
-BRANCH=$(bin/publish-public.sh --worktree "$CLONE" --token-file "$TOKEN_FILE" --pr \
-    --message "signatures: ${CVE}" 2>&1 | tee /dev/stderr |
+# One branch per CVE, reused: a second release of the same CVE updates that pull request rather than
+# adding another. The name is derived, not dated, for exactly that reason.
+RELEASE_BRANCH="release/$(echo "$CVE" | tr 'A-Z' 'a-z')"
+# The message states what the release carries. A subject naming only the CVE tells a reader of the
+# public repository nothing about the seventy files of tooling that arrive with it.
+RELEASE_MESSAGE="signatures: ${CVE}
+
+${CVE} signature, ledger verdict and the evidence the verdict cites."
+BRANCH=$(bin/publish-public.sh --worktree "$CLONE" --token-file "$TOKEN_FILE" --pr --branch "$RELEASE_BRANCH" \
+    --message "$RELEASE_MESSAGE" 2>&1 | tee /dev/stderr |
     sed -n -e 's/^publish-public: release branch: \([^ ]*\).*/\1/p' \
            -e 's/^publish-public: pushed branch \([^ ]*\).*/\1/p' \
            -e 's/.*branch \([^;]*\);.*/\1/p' | tail -1)
@@ -95,6 +103,7 @@ BRANCH=$(bin/publish-public.sh --worktree "$CLONE" --token-file "$TOKEN_FILE" --
 
 PR=$(bin/publish-open-pr.py --branch "$BRANCH" --title "signatures: ${CVE}" \
     --body "Automated release for ${CVE}; checklist and gate passed in the worktree.") || die "could not open the PR"
+note "pull request #${PR} (an existing one for this CVE is reused, not duplicated)"
 note "pull request #${PR}"
 
 # The review is a qwen-reviewer subagent, dispatched by the session that called this script: a shell

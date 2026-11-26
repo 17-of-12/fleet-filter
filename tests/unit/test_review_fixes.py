@@ -8,6 +8,7 @@ that arrived from the same host as the policy it described.
 
 import importlib.util
 import os
+import pathlib
 import unittest
 from types import SimpleNamespace
 
@@ -86,5 +87,23 @@ class ClaimTrustTest(unittest.TestCase):
         )
 
 
+
+class WorkerCopy(unittest.TestCase):
+    """The drain runs a copy of the worker; the copy must still know which repository it serves."""
+
+    def test_worker_copy_uses_the_repo_environment(self):
+        """A worker run from a copy in tmp/run must not derive the repo from its own path.
+
+        Bash reports BASH_SOURCE as the copy, so `dirname/..` resolves to tmp/ - and every path derived
+        from it (the skill, the worktree, the logs) lands under tmp/tmp/. The drain passes
+        FLEET_FILTER_REPO, and the worker has to honour it.
+        """
+        worker = pathlib.Path(__file__).resolve().parent.parent.parent / "bin" / "cve-worker.sh"
+        self.assertIn("REPO=${FLEET_FILTER_REPO:-", worker.read_text())
+        drain = (worker.parent / "cve-worker-drain.sh").read_text()
+        self.assertIn('FLEET_FILTER_REPO="$REPO" bash "$WORKER_COPY"', drain)
+
+
 if __name__ == "__main__":
     unittest.main()
+
