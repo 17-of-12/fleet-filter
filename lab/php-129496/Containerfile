@@ -1,0 +1,39 @@
+# CVE-2026-129496 victim image - see README.md in this directory.
+#
+# Base is php:8.4.26-apache - the fleet's own deployed PHP version (ff-php runs exactly this
+# image), and it is inside the advisory's affected range (8.4.* before 8.4.28, NVD /
+# GHSA-gr4f-wgx5-jpfv). The patched twin is php:8.4.28-apache. The version is an arg so the
+# vulnerable build (8.4.26), the vendor-mitigated build (8.4.26 with a valid date.timezone)
+# and the patched build (8.4.28) come from one file - the same pattern as
+# lab/php-129474/Containerfile and lab/php-115560/Containerfile.
+#
+# Why an image at all, when ff-php already runs 8.4.26: the bug needs the configuration the
+# advisory names - a FILE error_log plus a module-startup diagnostic (invalid date.timezone)
+# - and ff-php carries neither (its php.ini has a valid timezone and logs through Apache).
+# Adding the pair to ff-php would change the victim every recorded PHP2SHELL run is measured
+# against, so the pair gets its own container, exactly as lab/php-115560 built its own.
+ARG PHP_VERSION=8.4.26
+FROM docker.io/library/php:${PHP_VERSION}-apache
+
+ARG LAB_INI=conf/99-vuln.ini
+COPY ${LAB_INI} /usr/local/etc/php/conf.d/99-lab.ini
+
+# Apache side: the docroot mapping and the prefork pin (see conf/apache-lab.conf and
+# conf/mpm-prefork.conf). The base image installs Debian system Apache with
+# `AllowOverride None` for /var/www, so the FrontController mapping goes in as a
+# conf-enabled drop-in, and mpm_prefork - the MPM this image enables - is pinned to one
+# worker by replacing its mods-available config (as the abraxas lab's Dockerfile does), so
+# "the first request of a fresh worker" is a property the lab can force.
+COPY conf/apache-lab.conf /etc/apache2/conf-enabled/zz-lab.conf
+COPY conf/mpm-prefork.conf /etc/apache2/mods-available/mpm_prefork.conf
+
+COPY src/ /var/www/html/
+
+# The error_log file the vuln and patched inis point at; www-data must be able to write it
+# (abraxas lab/Dockerfile: touch + chown + chmod 644). The mitigated ini logs to syslog
+# instead, so its copy of this file simply stays empty except for what the app writes.
+RUN mkdir -p /var/log \
+	&& touch /var/log/php-error.log \
+	&& chown www-data:www-data /var/log/php-error.log \
+	&& chmod 644 /var/log/php-error.log \
+	&& rm -f /var/www/html/index.html
