@@ -8,7 +8,6 @@
 # found the next morning rather than at the end of the day.
 [Unit]
 Description=Daily check for a renewable gateway TLS certificate
-Documentation=file:/usr/local/share/doc/fleet-filter/CERTIFICATES.md
 
 [Timer]
 OnCalendar=*-*-* 03:00:00

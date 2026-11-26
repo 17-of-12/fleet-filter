@@ -7,7 +7,6 @@
 # check runs. Hourly keeps a dropped webshell visible within an hour at a cost of ~7 s per host.
 [Unit]
 Description=fleet-filter: run the webtree audit hourly (Bundle Z: new files, weekly full rescan)
-Documentation=file:///home/agent/projects/Fleet-Filter/the repository documentation
 
 [Timer]
 OnBootSec=5min

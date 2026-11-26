@@ -5,7 +5,6 @@
 # also the CA and the file server.
 [Unit]
 Description=Fetch the filter gateway policy periodically
-Documentation=file:/usr/local/share/doc/fleet-filter/POLICY-DISTRIBUTION.md
 
 [Timer]
 OnBootSec=2min

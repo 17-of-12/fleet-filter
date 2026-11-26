@@ -14,7 +14,6 @@
 # is refreshed from the repo rather than edited in place.
 [Unit]
 Description=fleet-filter: audit the Apache webtree with the Stage 4 scanner image
-Documentation=file:///home/agent/projects/Fleet-Filter/the repository documentation
 After=network-online.target
 Wants=network-online.target
 

@@ -8,7 +8,6 @@
 # precondition of Apache rather than a memory.
 [Unit]
 Description=Fleet-Filter: ensure TEST-NET addresses exist on lo
-Documentation=file:/usr/local/bin/ensure-testnet-addrs.sh
 DefaultDependencies=no
 After=network-pre.target
 Wants=network-pre.target
