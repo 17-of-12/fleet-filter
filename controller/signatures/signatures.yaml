@@ -308,6 +308,24 @@ signatures:
           body_marker: PHP_SESSION_UPLOAD_PROGRESS
         response_profile: generic_slow
         verdict_to_report: absent
+        # Added 2026-11-25 while CVE-2026-115560's session was being recorded: `bin/exploit-status.py`
+        # looks for fixtures in the 8000 characters after an entry, and this variant had none, so the
+        # entry had been passing on words belonging to whichever entry came next. The variant is
+        # enforced by the body_markers list, so the renderer never reads `tests` here; the value is
+        # the record itself.
+        tests:
+          positive:
+            # The marker itself. What that run filed is stdout transcripts, not the raw request body
+            # (chain-a.txt through chain-a-3.txt, summary.json), so the 514-byte body with the field
+            # name at offset 332 is the store's own 2026-11-24 measurement, recorded in the comment
+            # above - not a byte count that can be re-read from that directory. The same field line is
+            # what lab/php-115560/poc.py:80 builds, and that one is recorded verbatim
+            # (data/lab/poc-runs/CVE-2026-115560-20261125T213019Z):
+            - 'Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"'
+          negative:
+            - 'Content-Disposition: form-data; name="PHPSESSID"'   # the session field, not the progress field
+            - 'a=1&b=2'                                            # ordinary urlencoded POST
+            - ''                                                   # GET/HEAD: no body to search
 
   # ------------------------------------------------------------------
   # Two entries produced by the triage -> reference-code -> shape chain on
@@ -361,7 +379,7 @@ signatures:
 
   - id: CVE-2026-115560
     cve: CVE-2026-115560
-    title: PHP session upload-progress handler mismatch (PHP2Shell family)
+    title: PHP session upload-progress serialize-handler mismatch (PHP2Shell family)
     source: https://github.com/al4n4n/achilles-heel/tree/main/CVE-2026-115560
     class: exploit
     vuln_layer: engine
@@ -376,17 +394,51 @@ signatures:
 
     variants:
 
-      # Same trigger family as PHP2SHELL, and the PHP_SESSION_UPLOAD_PROGRESS marker there already
-      # covers the primary path: the PoC's poc.py sets that field four times. What it adds is a
-      # second knob, PHP_VAR_UNSERIALIZE_DESTROY, which the session serialize-handler mismatch needs.
-      # Keeping it a separate marker means a variant that omits the upload-progress field is still
-      # caught, and the two can be exercised independently.
-      - name: serialize_destroy_marker
+      # The literal the exploit cannot avoid is the upload-progress field name, `PHP_SESSION_UPLOAD_PROGRESS`
+      # (`session.upload_progress.name`): the rfc1867 initialiser only writes a progress record when a
+      # multipart body carries a field with exactly that name, and the record it writes is the session
+      # data the mismatch then mis-reads. Upstream's own detection for this CVE says the same thing -
+      # `detection/cve-2026-115560.rules` in the source repo matches
+      # `content:"PHP_SESSION_UPLOAD_PROGRESS"; http_client_body`, and so does every reference
+      # implementation's request builder (al4n4n, basesixtythree, cveForge, googlesky).
+      #
+      # Its rule's second content is `content:"|7c|O:"` - the pipe the `php` handler splits the session
+      # string at, glued to the `O:` of the serialised object being unserialised. Three bytes is below
+      # the gateway's floor for body markers (a marker shorter than 8 bytes "would match ordinary
+      # bodies", `gateway/src/policy/mod.rs`), so the payload-side literal is not expressible here
+      # without inventing a longer string the exploit does not have to send. The field name is the
+      # unavoidable half, and it is the same observable PHP2SHELL's variant carries - the two CVEs
+      # share one carrier; what differs is which serialiser wrote the session and which read it back,
+      # which is a server setting the request cannot show.
+      #
+      # Corrected the same day it was added. This variant shipped as `serialize_destroy_marker` with
+      # `body_marker: PHP_VAR_UNSERIALIZE_DESTROY`, describing it as "a second knob" the PoC adds. That
+      # string is a php-src C flag (main/php_variables.h) quoted in the PoC's docstring; it appears
+      # there and in no request builder anywhere, so no traffic could ever have matched it - a marker
+      # nobody's traffic contains is a rule that defends nothing. `PHP_SESSION_UPLOAD_PROGRESS` is what
+      # the request carries, measured in the run now recorded beside it
+      # (data/lab/poc-runs/CVE-2026-115560-20261125T213019Z: RCE at the victim, no RCE through the
+      # gateway, `claim=body:PHP_SESSION_UPLOAD_PROGRESS`).
+      - name: upload_progress_marker
         tier: [1]
         match:
-          body_marker: PHP_VAR_UNSERIALIZE_DESTROY
+          body_marker: PHP_SESSION_UPLOAD_PROGRESS
         response_profile: generic_slow
         verdict_to_report: absent
+        # A body-marker variant has no URI to project, so bin/render-gateway-detection.py returns
+        # before it ever reads `tests`; these are the store's own record of both directions, which is
+        # what a finished entry has to carry (step 5 of the skill, and the row `bin/exploit-status.py`
+        # prints for it).
+        tests:
+          positive:
+            # the marker itself, as the recorded run's body carries it - lab/php-115560/poc.py:80
+            # builds exactly this field line (the full body also names PHPSESSID and a
+            # filename="legit.bin" part, here 4 MiB of padding streamed at 16 KiB per 0.15 s):
+            - 'Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"'
+          negative:
+            - 'Content-Disposition: form-data; name="PHPSESSID"'   # the session field: PHP2SHELL's other rule, not this marker
+            - 'a=1&b=2'                                            # ordinary urlencoded POST
+            - ''                                                   # GET/HEAD: no body to search
 
   # ------------------------------------------------------------------
   # CVE-2026-119618 - mod_http2 assign_headers() race, httpd 2.4.55-2.4.70.

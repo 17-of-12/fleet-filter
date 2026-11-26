@@ -27,7 +27,6 @@
 # ban at the CA.
 [Unit]
 Description=Renew and deploy the gateway TLS certificate
-Documentation=file:/usr/local/share/doc/fleet-filter/CERTIFICATES.md
 After=network-online.target
 Wants=network-online.target
 

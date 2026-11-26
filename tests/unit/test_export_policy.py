@@ -16,6 +16,9 @@ Two things are checked, because either alone is insufficient:
 import importlib.util
 import os
 import re
+import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -29,6 +32,17 @@ def exporter_present():
     errors there makes the public CI red for a reason that is not a defect. Skip, and say why.
     """
     return os.path.isfile(os.path.join(ROOT, "bin", "export-public.py"))
+
+
+def cargo_present():
+    """Whether an export can be built here.
+
+    The exporter formats the exported gateway with cargo, so building one needs the toolchain
+    ADR-0001 pins; rustup installs it in ~/.cargo/bin, which a plain `bin/check.sh --python` run does
+    not always have on PATH. Skip with a reason rather than fail on a missing toolchain, which is not
+    what this test is about.
+    """
+    return os.path.exists(os.path.expanduser("~/.cargo/bin/cargo")) or shutil.which("cargo")
 
 
 def load_exporter():
@@ -69,7 +83,7 @@ class InternalBookkeepingTest(unittest.TestCase):
                   r"\bdesign records?\b", r"\bhandoffs?\b",
                   # Notes addressed to the maintainer: a decision we have not taken, or a host only
                   # our deployment has.
-                  r"\bowner (?:decision|directive)\b", r"\blab-web01\b", r"\butility\.is\b",
+                  r"\bowner (?:decision|directive)\b", r"\blab-web01\b", r"\butility\.is\b", r"\blab-web01\b",
                   r"\bff-(?:apache|control|wp|fpm)\b")
         offenders = []
         for doc in self.published_files():
@@ -169,6 +183,47 @@ class PublicDocsAllowlistTest(unittest.TestCase):
             if resolved.startswith("docs/") and resolved not in public:
                 offenders.append(target)
         self.assertEqual(offenders, [], "README links to unpublished docs: %s" % offenders)
+
+
+@unittest.skipUnless(exporter_present(), "the exporter is not published; this test covers it only")
+@unittest.skipUnless(cargo_present(), "cargo is not reachable, so no export can be built here")
+class ExportedTreeChecksItsOwnLinksTest(unittest.TestCase):
+    """Check the artifact that ships, not only the tree it is built from.
+
+    The failure this catches: PR 12 passed `bin/check.sh --all` here and came back red from CI, which
+    runs the same check inside the export. Three shipped unit files named their runbook by its path
+    in the private checkout - `.../docs/operations/CVE-TRIAGE.md` - and the export does not ship that
+    runbook, so the published copy of the unit held a reference its own tree could not resolve. Here
+    the file exists, so nothing was broken; over there it did not, and that is the tree a reader gets.
+
+    `bin/check-doc-links.py` derives its root from its own location, so running the copy *inside* the
+    export checks the export. The export is built with `git archive HEAD`, which is what a release
+    branch would carry, so a dirty working tree cannot make this green.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Build one export for the class; it is the artifact under test, so build it for real."""
+        cls._tmp = tempfile.TemporaryDirectory(prefix="ff-export-")
+        cls.dest = os.path.join(cls._tmp.name, "export")
+        built = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "bin", "export-public.py"), "--out", cls.dest,
+             "--force"], capture_output=True, text=True)
+        if built.returncode != 0:
+            cls._tmp.cleanup()
+            raise AssertionError("the exporter refused HEAD:\n%s" % (built.stderr[-2000:]))
+
+    @classmethod
+    def tearDownClass(cls):
+        """Drop the export built for this class."""
+        cls._tmp.cleanup()
+
+    def test_the_exported_tree_has_no_broken_document_reference(self):
+        """Run the same link check CI runs, against the tree CI checks out."""
+        ran = subprocess.run([sys.executable, os.path.join(self.dest, "bin", "check-doc-links.py")],
+                             capture_output=True, text=True)
+        self.assertEqual(ran.returncode, 0,
+                         "links broken in the export:\n%s\n%s" % (ran.stdout[-2000:], ran.stderr[-500:]))
 
 
 if __name__ == "__main__":

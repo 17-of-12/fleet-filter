@@ -1,0 +1,20 @@
+# CVE-2026-115560 victim image - see README.md in this directory.
+#
+# Base is the PHP version this fleet declares for ff-php (8.4.26), which is inside the advisory's
+# affected range (8.4.x < 8.4.28). The reference lab pins php:8.4.27-apache; the version is an arg
+# so the fleet's build and the reference build come from one file.
+#
+# The only thing that differs between the vulnerable and the mitigated image is which ini file is
+# copied in, so the pair cannot drift in any other direction: `ARG LAB_INI` makes "these two
+# containers differ by one setting" a fact about the build rather than a claim about the runtime.
+ARG PHP_VERSION=8.4.26
+FROM docker.io/library/php:${PHP_VERSION}-apache
+
+ARG LAB_INI=conf/99-vuln.ini
+COPY ${LAB_INI} /usr/local/etc/php/conf.d/99-lab.ini
+COPY src/ /var/www/html/
+
+# Writable drop dir the exploited gadget writes command output into. The SAPI runs as www-data, so
+# the directory has to be owned by the user that executes the destructor - otherwise the RCE runs
+# and the proof file silently fails to appear.
+RUN install -d -o www-data -g www-data /var/www/html/p
