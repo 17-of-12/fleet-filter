@@ -72,6 +72,11 @@ if [ "$VIA_PR" -eq 1 ] && [ -z "$TOKEN_FILE" ]; then
     die "--pr needs --token-file: the branch push and the merge both authenticate with it"
 fi
 
+# Absolute, because the script `cd`s into the clone and later reuses this path: a relative --worktree
+# made rsync try to create "tmp/public-clone" inside the clone it had just entered.
+mkdir -p "$WORKTREE"
+WORKTREE=$(cd "$WORKTREE" && pwd)
+
 if [ ! -d "$WORKTREE/.git" ]; then
     note "no clone at $WORKTREE; creating one from $REMOTE"
     git clone --quiet "$REMOTE" "$WORKTREE"

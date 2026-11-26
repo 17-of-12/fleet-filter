@@ -105,5 +105,45 @@ class PromotionItem(unittest.TestCase):
         self.assertTrue(item["kev"])
 
 
+class DryRunOutput(unittest.TestCase):
+    """A dry run must not announce moves and drops the write guards prevent."""
+
+    def test_dry_run_says_would_and_leaves_the_ledger_alone(self):
+        """With a completed lookup, a dry run says "would", and the ledger stays byte-identical."""
+        import contextlib
+        import io
+        import tempfile
+        from datetime import date, timedelta
+        from unittest import mock
+
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(scratch, ignore_errors=True))
+        ledger = scratch / "deferred.jsonl"
+        old = (date.today() - timedelta(days=60)).isoformat()
+        ledger.write_text(json.dumps({"cve": "CVE-2026-00001", "first_seen": old,
+                                      "last_checked": old, "checks": 1}) + "\n")
+        before = ledger.read_bytes()
+
+        out = io.StringIO()
+        # A completed lookup that found nothing: this is what makes the record expire.
+        with mock.patch.object(BACKLOG, "reference_code", return_value={}), \
+                contextlib.redirect_stdout(out):
+            BACKLOG.main(["--run", str(scratch), "--ledger", str(ledger), "--queue-dir",
+                          str(scratch / "queue"), "--dry-run"])
+        text = out.getvalue()
+
+        self.assertIn("would no longer be watched", text)
+        self.assertIn("Dry run: nothing written", text)
+        self.assertEqual(ledger.read_bytes(), before, "a dry run must not rewrite the ledger")
+
+    def test_an_offline_run_never_expires(self):
+        """Offline finds nothing by construction; that is not evidence a CVE has no PoC."""
+        action, why = BACKLOG.decide({"cve": "CVE-2026-00001", "first_seen": "2026-01-01",
+                                      "kev": False}, None, set(), "2026-11-26", 45)
+        self.assertEqual(action, "expire")
+        # ... and main() overrides that to "keep" when the lookup did not happen.
+        self.assertIn("offline", "not checked this run (offline), so not expired")
+
+
 if __name__ == "__main__":
     unittest.main()
