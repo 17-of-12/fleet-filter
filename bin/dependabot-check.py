@@ -10,7 +10,10 @@ So the check is deterministic: read the diff, and accept it only if every change
 pin, the pins added are the pins removed, and the versions actually moved. What it accepts, and where:
 
   * `name==version` in a requirements file (`.txt`) - the name is read from both sides of the diff, so
-    `+newdep==1.2.3` on its own is a dependency added, not bumped, and is refused;
+    `+newdep==1.2.3` on its own is a dependency added, not bumped, and is refused. The line has to end
+    with the version (a trailing `# comment` is allowed): `pyjwt==2.15.0 ; python_version < "0"` is
+    the same version installed in no environment at all, so a marker is a change in *when* the
+    dependency applies, and it is refused rather than read as a bump.
   * `name = { version = "=1.54.1", ... }` in a `.toml` - the inline-table form `gateway/Cargo.toml`
     uses for its dependencies (`tokio = { version = "=1.54.1", features = [...] }`), which a cargo bump
     edits in place and which the bare `version = "..."` shape cannot see, the name being on the line;
@@ -63,7 +66,8 @@ MAX_PAGES = 50  # 5000 files; past that the diff is reported as unreadable rathe
 # "1.0"` line in a text file from being read as a dependency bump.
 PIN_PATTERNS = (
     ("requirement", (".txt",),
-     re.compile(r"^[+-](?P<name>[A-Za-z0-9_.\-]+)==(?P<version>[0-9][A-Za-z0-9._+!]*)", re.I)),
+     re.compile(r"^[+-](?P<name>[A-Za-z0-9_.\-]+)==(?P<version>[0-9][A-Za-z0-9._+!]*)"
+                r"(?:[ \t]*#[^\n]*)?$", re.I)),
     ("inline table", (".toml",),
      re.compile(r"""^[+-](?P<name>[A-Za-z0-9_.\-]+)\s*=\s*\{\s*version\s*=\s*["']"""
                 r"""(?P<version>[^"'\s]+)["']""", re.I)),
