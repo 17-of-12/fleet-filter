@@ -158,6 +158,36 @@
       8100
      ],
      "note": "the patched engine php:8.5.13-apache with the same app - the fix side of the victim pair."
+    },
+    {
+     "container": "ff-php-129496",
+     "image": "localhost/ff-php-129496:8.4.26-vuln",
+     "version": "8.4.26-vuln",
+     "cve": "CVE-2026-129496",
+     "ports": [
+      8101
+     ],
+     "note": "built 2026-11-26 from lab/php-129496/Containerfile: the fleet's own engine image (php:8.4.26-apache is exactly what ff-php runs, and 8.4.26 is inside this CVE's 8.4.*<8.4.28 range) plus the advisory's config pair - file error_log + unresolvable date.timezone - and memory_limit=2M as the reference labs set. Built as its own container because ff-php has a valid timezone and no PHP file log, so the bug's precondition cannot exist there and a null would prove nothing (see lab/php-129496/README.md)."
+    },
+    {
+     "container": "ff-php-129496-mit",
+     "image": "localhost/ff-php-129496:8.4.26-mit",
+     "version": "8.4.26-mit",
+     "cve": "CVE-2026-129496",
+     "ports": [
+      8102
+     ],
+     "note": "the same image and app with date.timezone=Etc/UTC - the vendor's first mitigation (the setting whose invalid value prints at startup). The same oversized POST must be answered (memory fatal) instead of killing the worker: the causality control for the entry."
+    },
+    {
+     "container": "ff-php-129496-patched",
+     "image": "localhost/ff-php-129496:8.4.28-patched",
+     "version": "8.4.28-patched",
+     "cve": "CVE-2026-129496",
+     "ports": [
+      8103
+     ],
+     "note": "the patched engine php:8.4.28-apache with the same app and the same vulnerable ini - the fix side of the victim pair (measured: answers the POST with the memory fatal, worker alive)."
     }
    ]
   },

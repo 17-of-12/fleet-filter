@@ -522,6 +522,121 @@ signatures:
             - /API/import       # case-sensitive path: the reference's paths are lowercase
 
   # ------------------------------------------------------------------
+  # CVE-2026-129496 - PHP timezone-cache (ext/date DateTimeZone) use-after-
+  # free in non-thread-safe builds, disclosed 2026-11-19 by security@php.net
+  # (GHSA-gr4f-wgx5-jpfv, EPSS 0.1107, not KEV). Affected: < 8.2.36,
+  # 8.3.* < 8.3.37, 8.4.* < 8.4.28, 8.5.* < 8.5.13 - the fleet's own ff-php
+  # (php:8.4.26-apache) is inside that range, which is why this entry was
+  # built against a victim twin instead of the ff-php measurements already
+  # on file: ff-php has a valid timezone and no PHP file log, so the bug's
+  # precondition cannot exist there (lab/php-129496/README.md).
+  # Every literal below is quoted from the reference implementations' code;
+  # the variant comment names the file and line each one came from.
+  # ------------------------------------------------------------------
+  - id: CVE-2026-129496
+    cve: CVE-2026-129496
+    title: PHP timezone-cache use-after-free (NTS + file error_log) - oversized POST to a mod_php entry path
+    source: https://github.com/abraxas/php-tzcache-rce/blob/main/lab/poc.py
+    class: exploit
+    # `engine`, the value CVE-2026-115560 and CVE-2026-129289 also use: the code that faults is
+    # inside libphp.so (ext/date's timezone cache, allocated during module startup in memory that
+    # is then freed while a reference to it is kept), not in an application (CVE-2026-129474's
+    # `app`) and not in Apache's request parser (`protocol`). A front match on this traffic is
+    # therefore a mitigation *for that request* - the engine never runs it - as well as the
+    # deception the owner wants for exploit traffic; unlike CVE-2026-119618, matching is not too
+    # late. Patching to 8.4.28 is still the only thing that removes the bug from the host.
+    vuln_layer: engine
+    response_profile_default: generic_slow
+    verdict_to_report: absent
+    applies_to: [all]
+    fp_guard: []
+    ttl: 86400
+    added: 2026-11-26
+    review_by: 2027-05-26
+    evidence_max_bytes: 512
+
+    variants:
+
+      # What the references send, read out of the code rather than from the advisory:
+      #
+      #   abraxas    lab/poc.py:476-483  POST /index.php, data=POST_BODY (line 249:
+      #                                   b"x=" + b"C" * 3 MiB),
+      #                                   Content-Type: application/x-www-form-urlencoded,
+      #                                   Authorization: Basic <base64 forged heap image>
+      #   evenomn    poc/exploit.py:276-282  the same request, same body (:319) and token (:334)
+      #   googlesky  exploit/exploit.py:12   POST /check, body {},
+      #                                   Content-Type: application/json   (their C harness)
+      #   cveForge   poc.py:81,91,104        GET <site root>, repeated as a flood
+      #
+      # The bug's own conditions explain the shape and rule out a body marker: the engine only
+      # faults when a *fresh* worker takes a request that aborts during request startup, and the
+      # way every PoC forces that abort is a body larger than memory_limit (abraxas records it as
+      # "POST above memory_limit bails out before RINIT; post_deactivate calls the forged
+      # destructor"). The crash reads nothing from the body - any oversized body works - and the
+      # RCE payload rides in the Authorization header, which a variant cannot match on (the
+      # schema matches header *names*, not header values, and the gateway's shape surface has no
+      # Content-Length magnitude either). So the observable is the path, as it was for
+      # CVE-2026-129474, and the two spellings here are the two the references name:
+      # /index.php (abraxas, evenomn) and /check (googlesky - the lab serves it through an
+      # Apache FallbackResource so the spelling exists on a real front controller).
+      #
+      # Claiming /index.php contradicts a documented decision next door, deliberately.
+      # CVE-2026-129474 excludes /index.php from *its* regex because a POST to the site root is
+      # every login form on every PHP app and 129474 only lands where an application dispatches
+      # through __call(). Here the vulnerable code is the engine, which runs for every path
+      # Apache hands to PHP, so /index.php is not one more probe path - it is the exploitable
+      # surface, and a variant without it matches nothing on the fleet's own PHP host. The cost
+      # is stated rather than discovered later: the gateway matches `[detection]` prefixes on the
+      # request target alone (gateway/src/main.rs `match_detection`), so `method: [POST]` -
+      # which sigtest and the rendered Apache rule do honour - does not constrain the gateway,
+      # and a plain `GET /index.php` from a new source is claimed too. That is the right answer
+      # for a deception-first front end and the first thing to scope with `applies_to` on a host
+      # that serves real pages through the gateway.
+      #
+      # Deliberately not in the variant, with the reason: `/` (cveForge's target) - the renderer
+      # refuses `/` as a prefix because it flags every request on the host, and the site root is
+      # Apache's DirectoryIndex, not a CVE-specific path - and every *other* real PHP file on a
+      # host (/app.php, /wp-login.php), which an attacker could aim the same body at. Closing
+      # that gap is a per-site path list, the way CVE-2026-63030 enumerates WordPress's routes,
+      # not a broader regex here.
+      - name: mod_php_entry_paths
+        tier: [1, 2]
+        match:
+          uri_regex: '^(?:/index\.php|/check)$'
+          method: [POST]
+        # The pattern opens with an alternation, so there is no single derivable literal and the
+        # spellings are declared (the batch_route_query precedent).
+        gateway_prefixes:
+          - /index.php
+          - /check
+        response_profile: generic_slow
+        verdict_to_report: absent
+        tests:
+          positive:
+            # abraxas lab/poc.py:477-480 and evenomn poc/exploit.py:280. The recorded run sends
+            # this through both arms and through the deployed listener
+            # (data/lab/poc-runs/CVE-2026-129496-20261126T052757Z).
+            - /index.php
+            # googlesky exploit/exploit.py:12; the lab app serves it via FallbackResource and the
+            # recorded run requests it through both arms.
+            - /check
+          negative:
+            - /                       # cveForge's spelling: refused as a prefix, reason above
+            - /index.php/             # the references send the path exactly
+            - /index.html             # not a PHP entry path on this fleet
+            - /INFO.PHP               # the reference path is lowercase (the gateway folds case,
+                                      # the store's regex does not - same asymmetry as 129474's
+                                      # /API/import fixture)
+            - /wp-json/batch/v1       # CVE-2026-63030's route, not this CVE's
+            - /api/import             # CVE-2026-129474's route, not this CVE's
+        verify: >-
+          Measured 2026-11-26 against ff-php-129496 (php:8.4.26-apache + the advisory's config
+          pair) and both gateway arms rendered from this store: with the variant removed, the
+          reference POST killed the worker (connection reset, new pid); with it, the same request
+          was answered inline with the claim prefix:/index.php spooled and the app never
+          answered. See data/lab/poc-runs/CVE-2026-129496-20261126T052757Z.
+
+  # ------------------------------------------------------------------
   # CVE-2026-119618 - mod_http2 assign_headers() race, httpd 2.4.55-2.4.70.
   # Variants are enumerated from the public PoC's own SHAPES registry, not
   # invented: github.com/googlesky/CVE-2026-119618 poc/poc.py lines 303-314
