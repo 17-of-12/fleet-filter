@@ -12,3 +12,8 @@
 # discovering that a minor release changed a rendered rule or a lint verdict.
 PyYAML==6.0.4
 ruff==0.17.6
+# The token minting in bin/publish-review.py and bin/github-token.py needs these, and the
+# gate's interpreters should be able to exercise those modules.
+PyJWT==2.10.1
+# PyJWT needs it for RS256, which is how the App key signs.
+cryptography==50.0.2

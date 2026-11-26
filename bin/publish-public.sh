@@ -169,15 +169,29 @@ fi
 if [ -n "$TOKEN_FILE" ]; then
     [ -r "$TOKEN_FILE" ] || die "cannot read token file: ${TOKEN_FILE}"
     TOKEN=$(tr -d '[:space:]' < "$TOKEN_FILE")
+    # An installation token lives an hour. A file older than that authenticates as nothing, and git
+    # reports the 401 as "could not read Username" - which reads like a missing credential rather than
+    # an expired one, and cost an hour of debugging here.
+    AGE=$(( $(date +%s) - $(stat -c %Y "$TOKEN_FILE") ))
+    if [ "$AGE" -gt 3000 ]; then
+        note "token file is ${AGE}s old (installation tokens live 3600s); minting a fresh one"
+        TOKEN=$("${REPO_ROOT}/bin/github-token.py") || die "could not mint a GitHub token"
+    fi
 else
     TOKEN=$("${REPO_ROOT}/bin/github-token.py") || die "could not mint a GitHub token"
 fi
 
-push_with_token() {
+export GIT_TERMINAL_PROMPT=0
+
+git_with_token() {
     GIT_CONFIG_COUNT=1 \
     GIT_CONFIG_KEY_0=http.extraheader \
     GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" \
-        git push --quiet "$@"
+        git "$@"
+}
+
+push_with_token() {
+    git_with_token push --quiet "$@"
 }
 
 if [ "$VIA_PR" -eq 1 ]; then
@@ -185,6 +199,10 @@ if [ "$VIA_PR" -eq 1 ]; then
     # is an ancestor; otherwise the export is a sibling of the previous attempt and a plain push is
     # rejected as non-fast-forward. The branch is this tool's own, so a lease is the correct guard:
     # force only if nobody else moved it.
+    # --force-with-lease compares against the branch's remote-tracking ref; a clone that last fetched
+    # only `main` holds a stale one, so the lease fails on the very retry it exists to enable. The
+    # fetch needs the same credentials, or git stops for a password.
+    git_with_token fetch --quiet origin "$BRANCH" 2>/dev/null || true
     push_with_token --force-with-lease "origin" "$BRANCH":"$BRANCH" ||
         push_with_token "origin" "$BRANCH":"$BRANCH" ||
         die "could not push the release branch"

@@ -31,15 +31,12 @@ Exit status is 0 when the verdict was posted (and, for `pass`, the merge succeed
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
 import urllib.request
 
-try:
-    import jwt
-except ImportError:  # pragma: no cover
-    sys.exit("publish-review: pyjwt is required (host python3, not .venv)")
 
 API = "https://api.github.com"
 OWNER = "17-of-12"
@@ -52,6 +49,16 @@ MERGE_METHOD = "rebase"  # the ruleset requires a linear history
 
 
 def token():
+    """Mint an installation token, importing jwt here rather than at module scope.
+
+    The module-level import exited the process on import, which broke every interpreter that merely
+    wanted to import this file - the gate runs the suite under two Pythons, and only one of them has
+    the dependency.
+    """
+    try:
+        import jwt
+    except ImportError:  # pragma: no cover
+        sys.exit("publish-review: pyjwt is required to mint a token (install requirements-dev.txt)")
     """Mint an installation token from the app key."""
     with open(KEY) as handle:
         private = handle.read()
@@ -99,6 +106,24 @@ def show_diff(token_value, number):
         print(response.read().decode("utf-8", "replace"))
 
 
+ROLES = (
+    ("reviewer:", re.compile(r"reviewer[^:]{0,40}:")),
+    ("verifier:", re.compile(r"verifier[^:]{0,40}:")),
+    ("verified by primary:", re.compile(r"verified by primary[^:]{0,40}:")),
+)
+
+
+def missing_roles(notes):
+    """Which of the three role labels a pass verdict's notes fail to name.
+
+    Prose cannot be proven, so it is required to exist: a session that skipped the verifier must now
+    write the word and lie, rather than omit it and look compliant. That is a real reduction in what
+    can go wrong quietly, and it is honest about being a forcing function rather than a proof.
+    """
+    text = notes or ""
+    return [label for label, pattern in ROLES if not pattern.search(text)]
+
+
 def post_check(token_value, pr, verdict, notes):
     """Create the `agent-review` check run on the PR's head commit."""
     conclusion = "success" if verdict == "pass" else "failure"
@@ -142,10 +167,22 @@ def main(argv=None):
         if status != 200:
             sys.exit("publish-review: merge refused (%s): %s" % (status, merged))
         print("merged #%d: %s" % (args.pr, merged.get("message", "")))
+        branch = (pr.get("head") or {}).get("ref") or ""
+        if branch.startswith("release/"):
+            # A merged release branch is clutter: the release lives in main now. Best effort - a
+            # failure here must not turn a successful merge into an error.
+            status, _ = call("/repos/%s/%s/git/refs/heads/%s" % (OWNER, REPO, branch), token_value,
+                             "DELETE", None)
+            print("deleted branch %s (%s)" % (branch, status))
         return 0
 
     if not args.verdict:
         parser.error("one of --show-diff, --verdict pass, --verdict fail or --merge-only is required")
+
+    missing = missing_roles(args.notes)
+    if args.verdict == "pass" and missing:
+        sys.exit("publish-review: refusing to post a pass verdict that does not name the three roles "
+                 "that produced it; missing: " + ", ".join(missing) + ". Nothing was posted.")
 
     status, check = post_check(token_value, pr, args.verdict, args.notes)
     if status not in (200, 201):

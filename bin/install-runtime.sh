@@ -31,6 +31,8 @@ SCRIPTS=(
     "cve-daily.sh:fleet-filter-cve-daily"
     "cve-dispatch.py:fleet-filter-cve-dispatch"
     "publish-policies.py:fleet-filter-publish-policies"
+    "pr-review-worker.sh:fleet-filter-pr-review"
+    "prs-needing-review.py:fleet-filter-prs-needing-review"
 )
 UNITS=(
     fleet-filter-cve-triage.service
@@ -39,6 +41,8 @@ UNITS=(
     fleet-filter-cve-worker.timer
     fleet-filter-policy-publish.service
     fleet-filter-policy-publish.timer
+    fleet-filter-pr-review.service
+    fleet-filter-pr-review.timer
 )
 
 install_one() {
