@@ -1,141 +1,171 @@
 {
-  "schema": 1,
-  "updated": "2026-11-25",
-  "hosts": [
+ "schema": 1,
+ "updated": "2026-11-26",
+ "hosts": [
+  {
+   "name": "ff-apache01",
+   "ip": "10.20.0.225",
+   "role": "victim",
+   "expected": [
     {
-      "name": "ff-apache01",
-      "ip": "10.20.0.225",
-      "role": "victim",
-      "expected": [
-        {
-          "container": "ff-httpd-2.4.66",
-          "image": "localhost/ff-httpd:2.4.66",
-          "version": "2.4.66",
-          "cve": "CVE-2026-23918",
-          "ports": [
-            8080,
-            8443
-          ]
-        }
-      ]
-    },
-    {
-      "name": "ff-apache02",
-      "ip": "10.20.0.226",
-      "role": "victim",
-      "expected": [
-        {
-          "container": "ff-httpd-2.4.62",
-          "image": "localhost/ff-httpd:2.4.62",
-          "version": "2.4.62",
-          "cve": "CVE-2026-119618",
-          "ports": [
-            8080,
-            8443
-          ]
-        },
-        {
-          "container": "ff-httpd-2.4.49",
-          "image": "localhost/ff-httpd:2.4.49",
-          "version": "2.4.49",
-          "cve": "CVE-2021-41773",
-          "ports": [
-            8081,
-            8444
-          ]
-        },
-        {
-          "container": "ff-wp",
-          "image": "docker.io/library/wordpress:6.8.2",
-          "version": "6.8.2",
-          "cve": "CVE-2026-63030",
-          "ports": [
-            8090
-          ],
-          "note": "WordPress behind MariaDB (ff-wp-db), reachable on 8090. Added 2026-11-24 so the four WP2Shell variants have a victim that runs the application the CVE is in; without it those variants were enforced against nothing."
-        },
-        {
-          "container": "ff-wp-db",
-          "image": "docker.io/library/mariadb:11.4",
-          "version": "11.4",
-          "cve": null,
-          "ports": []
-        },
-        {
-          "container": "ff-php",
-          "image": "docker.io/library/php:8.4.26-apache",
-          "version": "8.4.26",
-          "cve": "CVE-2026-109618",
-          "ports": [
-            8091
-          ],
-          "note": "mod_php victim for PHP2Shell. session.upload_progress.cleanup=Off and an LFI sink (/vuln.php) were added deliberately: chain A needs both, and the defaults made it return an empty body. Recorded in data/lab/poc-runs/."
-        },
-        {
-          "container": "ff-wp-694",
-          "image": "docker.io/library/wordpress:6.9.4",
-          "version": "6.9.4",
-          "cve": "CVE-2026-63030",
-          "ports": [
-            8094
-          ]
-        },
-        {
-          "container": "ff-fpm",
-          "image": "docker.io/library/php:8.4.26-fpm",
-          "version": "8.4.26",
-          "cve": "CVE-2026-129289",
-          "ports": [
-            9000
-          ]
-        },
-        {
-          "container": "ff-fpm-front",
-          "image": "docker.io/library/nginx:alpine",
-          "version": "alpine",
-          "cve": "CVE-2026-129289",
-          "ports": [
-            8092
-          ],
-          "note": "fastcgi_keep_conn on - the vulnerability precondition"
-        },
-        {
-          "container": "ff-apache-fcgi",
-          "image": "docker.io/library/httpd:2.4.66",
-          "version": "2.4.66",
-          "cve": "CVE-2026-129289",
-          "ports": [
-            8093
-          ],
-          "note": "mod_proxy_fcgi enablereuse=on; effect not observed here"
-        },
-        {
-          "container": "ff-php-115560",
-          "image": "localhost/ff-php-115560:8.4.26-vuln",
-          "version": "8.4.26-vuln",
-          "cve": "CVE-2026-115560",
-          "ports": [
-            8095
-          ],
-          "note": "php:8.4.26-apache with the reference lab's session.serialize_handler=php_serialize + upload-progress-on configuration and its LabGadget app (lab/php-115560/). Built because ff-php cannot host this CVE: its global handler is already `php`, so the serialiser the advisory says writes the session never runs and a null result there would prove nothing."
-        },
-        {
-          "container": "ff-php-115560-mit",
-          "image": "localhost/ff-php-115560:8.4.26-mit",
-          "version": "8.4.26-mit",
-          "cve": "CVE-2026-115560",
-          "ports": [
-            8097
-          ],
-          "note": "the same image and app with session.upload_progress.enabled=0 (the vendor mitigation), so the RCE can be shown to depend on that one setting rather than on the container"
-        }
-      ]
-    },
-    {
-      "name": "ff-control01",
-      "ip": "10.20.0.205",
-      "role": "control",
-      "expected": []
+     "container": "ff-httpd-2.4.66",
+     "image": "localhost/ff-httpd:2.4.66",
+     "version": "2.4.66",
+     "cve": "CVE-2026-23918",
+     "ports": [
+      8080,
+      8443
+     ]
     }
-  ]
+   ]
+  },
+  {
+   "name": "ff-apache02",
+   "ip": "10.20.0.226",
+   "role": "victim",
+   "expected": [
+    {
+     "container": "ff-httpd-2.4.62",
+     "image": "localhost/ff-httpd:2.4.62",
+     "version": "2.4.62",
+     "cve": "CVE-2026-119618",
+     "ports": [
+      8080,
+      8443
+     ]
+    },
+    {
+     "container": "ff-httpd-2.4.49",
+     "image": "localhost/ff-httpd:2.4.49",
+     "version": "2.4.49",
+     "cve": "CVE-2021-41773",
+     "ports": [
+      8081,
+      8444
+     ]
+    },
+    {
+     "container": "ff-wp",
+     "image": "docker.io/library/wordpress:6.8.2",
+     "version": "6.8.2",
+     "cve": "CVE-2026-63030",
+     "ports": [
+      8090
+     ],
+     "note": "WordPress behind MariaDB (ff-wp-db), reachable on 8090. Added 2026-11-24 so the four WP2Shell variants have a victim that runs the application the CVE is in; without it those variants were enforced against nothing."
+    },
+    {
+     "container": "ff-wp-db",
+     "image": "docker.io/library/mariadb:11.4",
+     "version": "11.4",
+     "cve": null,
+     "ports": []
+    },
+    {
+     "container": "ff-php",
+     "image": "docker.io/library/php:8.4.26-apache",
+     "version": "8.4.26",
+     "cve": "CVE-2026-109618",
+     "ports": [
+      8091
+     ],
+     "note": "mod_php victim for PHP2Shell. session.upload_progress.cleanup=Off and an LFI sink (/vuln.php) were added deliberately: chain A needs both, and the defaults made it return an empty body. Recorded in data/lab/poc-runs/."
+    },
+    {
+     "container": "ff-wp-694",
+     "image": "docker.io/library/wordpress:6.9.4",
+     "version": "6.9.4",
+     "cve": "CVE-2026-63030",
+     "ports": [
+      8094
+     ]
+    },
+    {
+     "container": "ff-fpm",
+     "image": "docker.io/library/php:8.4.26-fpm",
+     "version": "8.4.26",
+     "cve": "CVE-2026-129289",
+     "ports": [
+      9000
+     ]
+    },
+    {
+     "container": "ff-fpm-front",
+     "image": "docker.io/library/nginx:alpine",
+     "version": "alpine",
+     "cve": "CVE-2026-129289",
+     "ports": [
+      8092
+     ],
+     "note": "fastcgi_keep_conn on - the vulnerability precondition"
+    },
+    {
+     "container": "ff-apache-fcgi",
+     "image": "docker.io/library/httpd:2.4.66",
+     "version": "2.4.66",
+     "cve": "CVE-2026-129289",
+     "ports": [
+      8093
+     ],
+     "note": "mod_proxy_fcgi enablereuse=on; effect not observed here"
+    },
+    {
+     "container": "ff-php-115560",
+     "image": "localhost/ff-php-115560:8.4.26-vuln",
+     "version": "8.4.26-vuln",
+     "cve": "CVE-2026-115560",
+     "ports": [
+      8095
+     ],
+     "note": "php:8.4.26-apache with the reference lab's session.serialize_handler=php_serialize + upload-progress-on configuration and its LabGadget app (lab/php-115560/). Built because ff-php cannot host this CVE: its global handler is already `php`, so the serialiser the advisory says writes the session never runs and a null result there would prove nothing."
+    },
+    {
+     "container": "ff-php-115560-mit",
+     "image": "localhost/ff-php-115560:8.4.26-mit",
+     "version": "8.4.26-mit",
+     "cve": "CVE-2026-115560",
+     "ports": [
+      8097
+     ],
+     "note": "the same image and app with session.upload_progress.enabled=0 (the vendor mitigation), so the RCE can be shown to depend on that one setting rather than on the container"
+    },
+    {
+     "container": "ff-php-129474",
+     "image": "localhost/ff-php-129474:8.5.12-vuln",
+     "version": "8.5.12-vuln",
+     "cve": "CVE-2026-129474",
+     "ports": [
+      8098
+     ],
+     "note": "built 2026-11-26 from lab/php-129474/Containerfile: the fleet's php is 8.4.26, outside this CVE's 8.5.0..8.5.12 range, so the victim is built at 8.5.12 with zend.exception_ignore_args=Off (the config whose argument collection the CVE corrupts)."
+    },
+    {
+     "container": "ff-php-129474-mit",
+     "image": "localhost/ff-php-129474:8.5.12-mit",
+     "version": "8.5.12-mit",
+     "cve": "CVE-2026-129474",
+     "ports": [
+      8099
+     ],
+     "note": "same image and app with zend.exception_ignore_args=On - the vendor's own mitigation, run against to show the collected-arguments behaviour comes from that setting."
+    },
+    {
+     "container": "ff-php-129474-patched",
+     "image": "localhost/ff-php-129474:8.5.13-patched",
+     "version": "8.5.13-patched",
+     "cve": "CVE-2026-129474",
+     "ports": [
+      8100
+     ],
+     "note": "the patched engine php:8.5.13-apache with the same app - the fix side of the victim pair."
+    }
+   ]
+  },
+  {
+   "name": "ff-control01",
+   "ip": "10.20.0.205",
+   "role": "control",
+   "expected": []
+  }
+ ]
 }

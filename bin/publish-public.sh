@@ -51,6 +51,7 @@ note() { echo "publish-public: $*" >&2; }
 while [ $# -gt 0 ]; do
     case "$1" in
         --worktree) WORKTREE=${2:?--worktree needs a path}; shift 2 ;;
+        --branch) BRANCH=${2:?--branch needs a name}; shift 2 ;;
         --message) MESSAGE=${2:?--message needs text}; shift 2 ;;
         --remote) REMOTE=${2:?--remote needs a URL}; shift 2 ;;
         --token-file) TOKEN_FILE=${2:?--token-file needs a path}; shift 2 ;;
@@ -127,14 +128,34 @@ fi
 git add -A
 git -c user.name="pragma-17of12[bot]" \
     -c user.email="5922290+pragma-17of12[bot]@users.noreply.github.com" \
-    commit --quiet -m "$MESSAGE"
+    commit --quiet -m "$MESSAGE" || die "could not commit the export"
+
+# State the scope, and state it from this tree. Computing it from the private branch produced "7 files
+# changed" for a release that published seventy-seven: the two trees differ in ways the private diff
+# cannot see.
+SCOPE=$(git diff --stat "HEAD~1" "HEAD" 2>/dev/null | tail -1 | sed 's/^ *//')
+if [ -n "$SCOPE" ] && ! git log --format=%B -1 | grep -qF "$SCOPE"; then
+    git -c user.name="pragma-17of12[bot]" \
+        -c user.email="5922290+pragma-17of12[bot]@users.noreply.github.com" \
+        commit --quiet --amend -m "$(git log --format=%s -1)
+
+$(git log --format=%b -1)
+
+${SCOPE}"
+    note "scope: ${SCOPE}"
+fi
 note "committed $(git log --format=%h -1): $(git log --format=%s -1)"
 
 # 4a. Pull-request mode: the release travels as a PR so an agent review can gate it. The merge
 #     itself is done by bin/publish-review.py after the reviewer has read the diff.
+# The branch name is either given or dated. Given, because a release that runs twice - a retry after a
+# timeout, a fix after a failed review - must update the pull request it already opened instead of
+# opening another one. Three attempts at one signature produced three pull requests before this.
 if [ "$VIA_PR" -eq 1 ]; then
-    BRANCH="release/$(date -u +%Y-%m-%dT%H%M%SZ)"
-    git checkout --quiet -b "$BRANCH"
+    if [ -z "$BRANCH" ]; then
+        BRANCH="release/$(date -u +%Y-%m-%dT%H%M%SZ)"
+    fi
+    git checkout --quiet -B "$BRANCH"
     note "release branch: $BRANCH"
 fi
 
@@ -155,7 +176,13 @@ push_with_token() {
 }
 
 if [ "$VIA_PR" -eq 1 ]; then
-    push_with_token origin "$BRANCH":"$BRANCH" || die "could not push the release branch"
+    # A retry re-exports from the current tree and commits on top of the branch's tip only if that tip
+    # is an ancestor; otherwise the export is a sibling of the previous attempt and a plain push is
+    # rejected as non-fast-forward. The branch is this tool's own, so a lease is the correct guard:
+    # force only if nobody else moved it.
+    push_with_token --force-with-lease "origin" "$BRANCH":"$BRANCH" ||
+        push_with_token "origin" "$BRANCH":"$BRANCH" ||
+        die "could not push the release branch"
     note "pushed branch ${BRANCH}"
     note "  bin/publish-open-pr.py --branch ${BRANCH} --title \"$(git log --format=%s -1)\""
     exit 0

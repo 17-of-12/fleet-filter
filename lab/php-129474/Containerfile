@@ -1,0 +1,24 @@
+# CVE-2026-129474 victim image - see README.md in this directory.
+#
+# Base is php:8.5.12-apache, inside the advisory's affected range (>= 8.5.0, < 8.5.13,
+# GHSA-8mjj-2r7p-4hg2). The fleet's own PHP (8.4.26) is outside that range, which is why this
+# image exists instead of another use of ff-php. The version is an arg so the vulnerable build
+# (8.5.12) and the patched twin (8.5.13) come from one file.
+#
+# The only differences between the three tags are a base version or an ini file, never anything
+# else - `ARG PHP_VERSION` / `ARG LAB_INI` make "these containers differ by one line" a fact about
+# the build rather than a claim about the runtime (same pattern as lab/php-115560/Containerfile).
+ARG PHP_VERSION=8.5.12
+FROM docker.io/library/php:${PHP_VERSION}-apache
+
+ARG LAB_INI=conf/99-vuln.ini
+COPY ${LAB_INI} /usr/local/etc/php/conf.d/99-lab.ini
+
+# This base image installs Debian system Apache (/etc/apache2), and its config sets
+# `AllowOverride None` for /var/www - a .htaccess would be ignored (measured, see README).
+# The FrontController mapping therefore goes in as a conf-enabled drop-in: everything that is not
+# a real file under the docroot is served by index.php, which is how the reference's routes
+# (/api/import and friends) exist without being files.
+COPY conf/apache-lab.conf /etc/apache2/conf-enabled/zz-lab-fallback.conf
+
+COPY src/ /var/www/html/

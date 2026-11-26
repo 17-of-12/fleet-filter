@@ -441,6 +441,87 @@ signatures:
             - ''                                                   # GET/HEAD: no body to search
 
   # ------------------------------------------------------------------
+  # CVE-2026-129474 - PHP magic-method backtrace use-after-free, disclosed
+  # 2026-11-24 (security@php.net, GHSA-8mjj-2r7p-4hg2). The reference PoC is
+  # murrez/php2shell poc.py; the store entry and the lab share one request
+  # shape, and the reasons it is a uri_regex variant rather than a body marker
+  # are in the variant comment.
+  # ------------------------------------------------------------------
+  - id: CVE-2026-129474
+    cve: CVE-2026-129474
+    title: PHP magic-method backtrace use-after-free while collecting __call/__callStatic arguments
+    source: https://github.com/murrez/php2shell/blob/a8e24f4efab57f67384909d9408e42a74b973bfb/poc.py#L808-L816
+    class: exploit
+    # `app`: the vulnerable sink is application PHP - the `__call`/`__callStatic` handler whose
+    # arguments the engine collects. Apache itself would not fault; a gateway match on this
+    # traffic is DECEPTION of an attempt that would otherwise land, which is the class of
+    # traffic the owner wants claimed instead of proxied (same reasoning as CVE-2026-63030).
+    vuln_layer: app
+    response_profile_default: generic_slow
+    verdict_to_report: absent
+    applies_to: [all]
+    fp_guard: []
+    ttl: 86400
+    added: 2026-11-26
+    review_by: 2027-05-26
+    evidence_max_bytes: 512
+
+    variants:
+
+      # Why a uri_regex variant and not a body marker: the exploit's payload is the application's
+      # own request body (murrez's builder fills 640 KiB with filler records only so the engine
+      # has something to collect); nothing in it is a fixed literal - a real attacker sends the
+      # app's data. The unavoidable observable is WHERE the request goes: murrez's scanner only
+      # fires this probe at paths where an app is known to dispatch through magic methods, the
+      # list below is that list as the pinned commit has it, and cveForge's scanner for the same
+      # CVE adds /api/data. `Content-Type: application/json` is part of the reference request
+      # but the store schema has no content-type field on uri_regex variants (headers are the
+      # posture's `content_types` list, not a variant's match), so it is recorded here, in the
+      # request the lab's PoC actually sends, and in the run beside this entry.
+      #
+      # The two bare paths in the reference list, `/` and `/index.php`, are deliberately NOT in
+      # the regex: any POST to the site root (a login form submit on any PHP app) would be
+      # claimed by it, and the reference's own hit on those paths means only "the scanner walked
+      # there", which `/api/import` et al. already provide without the collateral. Documented
+      # here because leaving them out is a decision a future reader will otherwise re-litigate;
+      # the recorded run probes them and shows the same app answer they produce everywhere else.
+      - name: magic_call_api_routes
+        tier: [1, 2]
+        match:
+          uri_regex: '^(?:/api/import|/api/imports|/api/v1/import|/import|/graphql|/api/data|/rest/V1/guest-carts/estimate-shipping-methods)$'
+          method: [POST]
+        # The regex opens with an alternation, so it has no single literal prefix for the
+        # gateway to match; the spellings are named here instead of being re-derived
+        # (the batch_route_query precedent).
+        gateway_prefixes:
+          - /api/import
+          - /api/imports
+          - /api/v1/import
+          - /import
+          - /graphql
+          - /api/data
+          - /rest/V1/guest-carts/estimate-shipping-methods
+        response_profile: generic_slow
+        verdict_to_report: absent
+        tests:
+          positive:
+            # the reference probe paths as lab/php-129474/poc.py sends them (the recorded run
+            # POSTs each of these to the victim and to both gateway arms):
+            - /api/import
+            - /api/imports
+            - /api/v1/import
+            - /import
+            - /graphql
+            - /api/data
+            - /rest/V1/guest-carts/estimate-shipping-methods
+          negative:
+            - /                 # the app page - served, never a magic-method entry on this fleet
+            - /index.php        # ditto (the reference probes it; documented above)
+            - /api/status       # the app's declared route: served, not magic-dispatched
+            - /wp-json/batch/v1 # CVE-2026-63030's route, not this CVE's
+            - /API/import       # case-sensitive path: the reference's paths are lowercase
+
+  # ------------------------------------------------------------------
   # CVE-2026-119618 - mod_http2 assign_headers() race, httpd 2.4.55-2.4.70.
   # Variants are enumerated from the public PoC's own SHAPES registry, not
   # invented: github.com/googlesky/CVE-2026-119618 poc/poc.py lines 303-314
