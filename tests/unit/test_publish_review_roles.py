@@ -37,6 +37,17 @@ class Roles(unittest.TestCase):
         """No notes at all is the same failure as notes without roles."""
         self.assertEqual(len(missing(None)), 3)
 
+    def test_a_machine_verdict_says_what_was_checked_instead_of_naming_roles(self):
+        """--machine is the record that a deterministic check, not a session, produced the verdict."""
+        self.assertTrue(PUBLISH.machine_notes_ok(
+            "machine-checked: clean: every changed line in requirements-dev.txt is a version pin"))
+        self.assertFalse(PUBLISH.machine_notes_ok("looks fine to me"))
+        self.assertFalse(PUBLISH.machine_notes_ok(None))
+
+    def test_the_machine_label_is_read_as_a_prefix_not_anywhere_in_the_note(self):
+        """The first version asked for a prefix and accepted a substring, so any wording passed."""
+        self.assertFalse(PUBLISH.machine_notes_ok("reviewer said ok, and machine-checked: sort of"))
+
 
 if __name__ == "__main__":
     unittest.main()

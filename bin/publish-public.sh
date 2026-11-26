@@ -77,6 +77,13 @@ fi
 mkdir -p "$WORKTREE"
 WORKTREE=$(cd "$WORKTREE" && pwd)
 
+# Same reason for the token: it is read after the `cd` into the clone, so a relative --token-file
+# (the way the path is normally typed) failed the readability check only after the export had been
+# committed in the clone - the commit existed, nothing was pushed, and the message blamed the token.
+if [ -n "$TOKEN_FILE" ] && [ -f "$TOKEN_FILE" ]; then
+    TOKEN_FILE=$(cd "$(dirname "$TOKEN_FILE")" && pwd)/$(basename "$TOKEN_FILE")
+fi
+
 if [ ! -d "$WORKTREE/.git" ]; then
     note "no clone at $WORKTREE; creating one from $REMOTE"
     git clone --quiet "$REMOTE" "$WORKTREE"

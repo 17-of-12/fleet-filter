@@ -40,7 +40,40 @@ MODE=${SELECTED##* }
 note "pull request #${PR}: ${MODE}"
 
 if [ "$DRY_RUN" -eq 1 ]; then
-    note "--dry-run: would dispatch a review session for #${PR}"
+    if [ "$MODE" = "machine" ]; then
+        note "--dry-run: would run the deterministic dependency check for #${PR}, not a session"
+    else
+        note "--dry-run: would dispatch a review session for #${PR}"
+    fi
+    exit 0
+fi
+
+if [ "$MODE" = "machine" ]; then
+    # A dependency bump: the diff decides, not a session. The check answers 0 clean, 1 refused and 2
+    # "could not run", and only the first two are verdicts: posting a FAIL because a token could not be
+    # minted files an outage on this host as a review finding on somebody's pull request.
+    STATUS=0
+    "${REPO}/bin/dependabot-check.py" --pr "$PR" >"${REPO}/tmp/dependabot-${PR}.txt" 2>&1 || STATUS=$?
+    WHY=$(cat "${REPO}/tmp/dependabot-${PR}.txt")
+    case "$STATUS" in
+        0)
+            # The pass is posted with --no-merge and merged by the same --merge-only that the `merge`
+            # mode uses. A verdict that merges inline and is then merged again always ends its run on
+            # "merge refused", because the second merge has nothing left to merge.
+            "${REPO}/bin/publish-review.py" --pr "$PR" --verdict pass --machine --no-merge \
+                --notes "machine-checked: ${WHY}. Deterministic check, no agent review: dependency bumps are reviewed by the gate and a pin-only diff." \
+                || die "could not post the machine verdict for #${PR}"
+            "${REPO}/bin/publish-review.py" --pr "$PR" --merge-only || die "merge refused for #${PR}"
+            ;;
+        1)
+            "${REPO}/bin/publish-review.py" --pr "$PR" --verdict fail --machine \
+                --notes "machine-checked: refused - ${WHY}. This needs a human or a review session, not a bump." \
+                || die "could not post the refusal for #${PR}"
+            ;;
+        *)
+            die "the dependency check could not run for #${PR} (exit ${STATUS}): $(head -n 1 "${REPO}/tmp/dependabot-${PR}.txt")"
+            ;;
+    esac
     exit 0
 fi
 
@@ -48,7 +81,17 @@ if [ "$MODE" = "merge" ]; then
     # A pass was posted and the merge did not happen (the session died, or GitHub refused at that
     # moment). Finishing it needs no agent: the verdict exists, the gate is green.
     note "merging #${PR} on its posted pass"
-    "${REPO}/bin/publish-review.py" --pr "$PR" --merge-only || die "merge refused for #${PR}"
+    set +e
+    "${REPO}/bin/publish-review.py" --pr "$PR" --merge-only
+    rc=$?
+    set -e
+    if [ "$rc" -eq 3 ]; then
+        # Stale base: re-cut from the pull request's own commits rather than retrying a merge that
+        # cannot succeed while main has moved.
+        "${REPO}/bin/recut-pr.py" --pr "$PR" || die "could not re-cut #${PR}"
+        exit 0
+    fi
+    [ "$rc" -eq 0 ] || die "merge refused for #${PR}"
     exit 0
 fi
 
@@ -96,6 +139,8 @@ STAGE 3 - you act, and only on verified findings.
     bin/publish-review.py --pr ${PR} --verdict <pass|fail> --notes "reviewer (adversarial): ... |
       verifier: confirmed <list> / refuted <list> with the measurement | verified by primary: what I opened"
     bin/publish-review.py --pr ${PR} --merge-only      # on pass, once the gate reports success
+     If that exits 3 the base has gone stale: run bin/recut-pr.py --pr ${PR}, which rebases the branch
+     onto current main and opens the replacement. Do not retry the merge.
 
 Never open a second pull request for the same work. If a defect is real and you cannot fix it inside
 this session, post an honest FAIL naming the file and line - that is a better state than a merge

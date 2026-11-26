@@ -17,12 +17,21 @@ project will not cut a 1.0 until the policy format has survived a release withou
   key provisioned out of band, before the policy is parsed or installed.
 - `bin/exploit-upstream.py`, and its gate: a contribution is complete only when the signature, the
   verdict and a publishable recorded run are all present.
+- `bin/dependabot-check.py`: a deterministic verdict for dependency-bump pull requests. It accepts a
+  diff only when every changed line is a version pin and every pin added is a pin removed, so
+  dependabot stops needing an agent session it could never be given; exit codes separate "clean" from
+  "refused" from "could not run". The review queue gained the matching `machine` mode and
+  `bin/publish-review.py` gained `--machine`, which labels a verdict as machine-produced instead of
+  pretending three roles reviewed it.
 - CI: the repository gate runs on every push and pull request, and fails a tree that only passes
   with a dirty working copy.
 - MIT license, security policy, contribution guide and issue templates.
 
 ### Changed
 
+- `bin/prs-needing-review.py` admits `dependabot[bot]` as an author (on a `dependabot/*` branch only)
+  and applies its failure backoff to every mode that would redo work, not only to `review`: the queue
+  stops at the lowest eligible number, so a bump refused once used to block every pull request behind it.
 - The CVE check runs every four hours instead of nightly, with timestamped run directories and KEV/EPSS
   cached for six hours. Deferred CVEs are recorded and re-checked rather than dropped when they age out
   of the triage window.

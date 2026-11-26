@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print the oldest open release pull request that still needs a review verdict.
+"""Print the oldest open pull request that still needs a verdict, and in which mode.
 
 Why this exists: `bin/release-cve.sh` deliberately stops after opening the pull request, but the
 review-and-merge step used to depend on the agent session that opened it having time left. When the
@@ -7,18 +7,23 @@ session hit its hour, the pull request sat open until a person merged it - which
 
 So the queue is the pull requests themselves. This prints the one to work on, or nothing:
 
-  * open, in this repository (not a fork), authored by the release App, and named like release
-    tooling output (branch `release/*` or a `signatures:` title)
+  * open, in this repository (not a fork), authored by the release App or by dependabot
+  * authored by the release App: named like release tooling output (branch `release/*` or a
+    `signatures:` title), and reviewed by an agent session - mode `review`
+  * authored by dependabot: on a `dependabot/*` branch, and decided by the deterministic pin check
+    instead of a session - mode `machine`, because a version bump needs a rule, not a judgement
   * its `gate` check concluded success - there is no point reviewing a red tree
-  * either it has no `agent-review` verdict yet (mode `review`), or it has a passing one and the merge
-    did not happen (mode `merge`) - a pass whose merge failed at the session's death is otherwise
-    stranded for ever, because nothing else looks at it
+  * either it has no `agent-review` verdict yet, or it has a passing one and the merge did not happen
+    (mode `merge`) - a pass whose merge failed at the session's death is otherwise stranded for ever,
+    because nothing else looks at it
 
-A failing verdict is re-workable, but not on every tick: a pull request whose last verdict failed
-within `--backoff-minutes` is skipped, so a review that keeps failing cannot spend a full agent session
-every ten minutes.
+A failing verdict is re-workable, but not on every tick: any pull request whose last verdict failed
+within `--backoff-minutes` is skipped, whether that verdict came from a session or from the machine
+check. Skipping only the `review` mode was a bug - the queue stops at the lowest eligible number, so
+one refused bump parked forever at the front of the queue also starved every pull request behind it.
 
-Nothing is merged here: merging needs a verdict, and a verdict needs a reviewer.
+Nothing here merges anything: merging needs a verdict, and a verdict comes from a reviewer or from the
+deterministic check, never from this script.
 """
 
 import argparse
@@ -68,6 +73,9 @@ BOT = "pragma-17of12[bot]"
 REPO = "17-of-12/fleet-filter"
 
 
+DEPENDABOT = "dependabot[bot]"
+
+
 def classify(pull, state):
     """Whether this pull request may enter the unattended review queue, and why not.
 
@@ -75,17 +83,28 @@ def classify(pull, state):
     from forks. Since the review session runs with write tools and can mint an App token, a pull
     request from outside must never reach it - the gate passing is not provenance. So the rule is the
     two properties a fork cannot forge: the head repository is this one, and the author is the release
-    App.
+    App or dependabot. Anyone else, including a person with write access, is refused.
     """
     head = (pull.get("head") or {}).get("repo") or {}
     author = (pull.get("user") or {}).get("login")
     if head.get("full_name") != REPO:
         return False, "head is %s, not %s (fork or external branch)" % (
             head.get("full_name") or "an unknown repository", REPO)
-    if author != BOT:
+    if author not in (BOT, DEPENDABOT):
         return False, "author is %s, not the release App" % author
     branch = (pull.get("head") or {}).get("ref") or ""
     title = pull.get("title") or ""
+    if author == DEPENDABOT:
+        # A version bump is a mechanical change: the gate and a pin-only diff decide it, not a review
+        # session. Mode `machine` runs that check and posts the verdict without an agent.
+        if not branch.startswith("dependabot/"):
+            return False, "dependabot PR without a dependabot branch"
+        gate = (state.get("gate") or (None, None))[0]
+        if gate != "success":
+            return False, "gate is %s" % (gate or "missing")
+        if (state.get("agent-review") or (None, None))[0] == "success":
+            return True, "merge"
+        return True, "machine"
     if not (branch.startswith("release/") or title.startswith("signatures:")):
         return False, "not named like release tooling"
     gate = (state.get("gate") or (None, None))[0]
@@ -151,7 +170,9 @@ def main(argv=None):
         examined.append(entry)
         if not eligible:
             continue
-        if why == "review" and recent_failure(state.get("agent-review"), args.backoff_minutes):
+        # `merge` is exempt: there is nothing to redo there, only the merge to finish. Every mode that
+        # would spend work again - a session or the machine check - honours the timer.
+        if why != "merge" and recent_failure(state.get("agent-review"), args.backoff_minutes):
             entry["why"] = "separate"
             continue
         if args.json:
