@@ -92,6 +92,23 @@ class Verdict(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("no version moved", why)
 
+    def test_a_requirement_marker_after_the_version_is_refused(self):
+        """`pyjwt==2.15.0 ; python_version < "0""` keeps the version and uninstalls the package.
+
+        The pattern ended its match at the version, so whatever followed it - a PEP 508 marker or plain
+        trailing text - was never read, and a line that stops installing the dependency on every
+        interpreter passed as a clean bump. The line has to end with the version (or a comment).
+        """
+        ok, why = CHECK.verdict([("requirements.txt",
+                                  ['+pyjwt==2.15.0 ; python_version < "0"', "-pyjwt==2.10.1"])])
+        self.assertFalse(ok)
+        self.assertIn("not a version pin", why)
+
+    def test_a_requirement_line_may_still_end_in_a_comment(self):
+        """Annotating a pin is ordinary, so a trailing comment is not read as a second change."""
+        self.assertTrue(CHECK.verdict([("requirements.txt",
+                                        ["+PyJWT==2.15.0  # pinned by the app", "-PyJWT==2.10.1"])])[0])
+
     def test_an_edited_comment_on_an_unchanged_action_pin_is_refused(self):
         """The sha is the version of an action pin; a comment edit beside it moved nothing."""
         self.assertFalse(CHECK.verdict([diff(

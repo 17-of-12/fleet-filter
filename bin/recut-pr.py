@@ -56,6 +56,12 @@ def main(argv=None):
 
     pull = api("/pulls/%d" % args.pr)
     base = (pull.get("base") or {}).get("sha")
+    # The pull request's own head, taken from the API and used by name below. `git checkout FETCH_HEAD`
+    # after `git fetch origin main pull/N/head` resolves to *main*: FETCH_HEAD records the fetched refs
+    # in order and the first is main, so the re-cut branch was created at main and the pull request's
+    # content was left behind - and pushing it as the head of a new pull request would have failed with
+    # "no commits between main and release/recut-N".
+    head_sha = (pull.get("head") or {}).get("sha")
     main_sha = (api("/git/refs/heads/main").get("object") or {}).get("sha")
     if base == main_sha:
         print("recut: base is current; nothing to do")
@@ -72,7 +78,7 @@ def main(argv=None):
         print("recut: would rebase pull/%d/head onto main and push %s" % (args.pr, branch))
         return 0
 
-    run(["git", "checkout", "--quiet", "-B", branch, "FETCH_HEAD"], cwd=clone)
+    run(["git", "checkout", "--quiet", "-B", branch, head_sha], cwd=clone)
     done = subprocess.run(["git", "rebase", "origin/main"], cwd=clone, capture_output=True, text=True)
     if done.returncode != 0:
         run(["git", "rebase", "--abort"], cwd=clone, check=False)

@@ -12,7 +12,9 @@
 set -euo pipefail
 
 REPO=${FLEET_FILTER_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
-TIMEOUT="${PR_REVIEW_TIMEOUT:-2700}"
+# Ninety minutes: reviewer, verifier, fixes, a re-publish and a CI wait in one session. The
+# ceiling is a backstop for a hang, not a budget for the work.
+TIMEOUT="${PR_REVIEW_TIMEOUT:-5400}"
 DRY_RUN=0
 # Beside the checkout, not in /var/lib: this runs as the pi owner, and state it did not create it
 # cannot write (the worker lock had exactly this bug).
@@ -20,6 +22,21 @@ LOCK="${FLEET_FILTER_PR_LOCK:-${REPO}/tmp/run/pr-review.lock}"
 
 die() { echo "pr-review-worker: $*" >&2; exit 1; }
 note() { echo "pr-review-worker: $*" >&2; }
+
+merge_or_recut() {
+    # Merge a pass that is already posted. Exit 3 from publish-review is not a refusal: it means the
+    # base moved, so the pull request is re-cut from its own commits instead of being retried while
+    # main walks away. Every merge path goes through here, so the machine mode cannot lose that rule
+    # by copying the call and forgetting the branch - which is exactly what it used to do.
+    local pr=$1 rc=0
+    "${REPO}/bin/publish-review.py" --pr "$pr" --merge-only || rc=$?
+    if [ "$rc" -eq 3 ]; then
+        note "#${pr}: the base is stale; re-cutting from the pull request's own commits"
+        "${REPO}/bin/recut-pr.py" --pr "$pr" || die "could not re-cut #${pr}"
+        return 0
+    fi
+    [ "$rc" -eq 0 ] || die "merge refused for #${pr}"
+}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -57,13 +74,25 @@ if [ "$MODE" = "machine" ]; then
     WHY=$(cat "${REPO}/tmp/dependabot-${PR}.txt")
     case "$STATUS" in
         0)
-            # The pass is posted with --no-merge and merged by the same --merge-only that the `merge`
-            # mode uses. A verdict that merges inline and is then merged again always ends its run on
-            # "merge refused", because the second merge has nothing left to merge.
+            # The pass is posted with --no-merge and merged by the same path the `merge` mode uses. A
+            # verdict that merges inline and is then merged again always ends its run on "merge
+            # refused", because the second merge has nothing left to merge.
+            # The *post* answers 3 on a stale base too - publish-review checks the base before it
+            # writes the check run - and `|| die` there left a clean bump with no verdict and no
+            # backoff: the queue re-selects it every tick and dies again, so the one case the machine
+            # check exists for, a dependabot bump while main moves, never reached the merge.
+            rc=0
             "${REPO}/bin/publish-review.py" --pr "$PR" --verdict pass --machine --no-merge \
                 --notes "machine-checked: ${WHY}. Deterministic check, no agent review: dependency bumps are reviewed by the gate and a pin-only diff." \
-                || die "could not post the machine verdict for #${PR}"
-            "${REPO}/bin/publish-review.py" --pr "$PR" --merge-only || die "merge refused for #${PR}"
+                || rc=$?
+            if [ "$rc" -eq 3 ]; then
+                note "#${PR}: the base is stale, so no verdict could be posted; re-cutting"
+                "${REPO}/bin/recut-pr.py" --pr "$PR" || die "could not re-cut #${PR}"
+            elif [ "$rc" -ne 0 ]; then
+                die "could not post the machine verdict for #${PR}"
+            else
+                merge_or_recut "$PR"
+            fi
             ;;
         1)
             "${REPO}/bin/publish-review.py" --pr "$PR" --verdict fail --machine \
@@ -81,17 +110,7 @@ if [ "$MODE" = "merge" ]; then
     # A pass was posted and the merge did not happen (the session died, or GitHub refused at that
     # moment). Finishing it needs no agent: the verdict exists, the gate is green.
     note "merging #${PR} on its posted pass"
-    set +e
-    "${REPO}/bin/publish-review.py" --pr "$PR" --merge-only
-    rc=$?
-    set -e
-    if [ "$rc" -eq 3 ]; then
-        # Stale base: re-cut from the pull request's own commits rather than retrying a merge that
-        # cannot succeed while main has moved.
-        "${REPO}/bin/recut-pr.py" --pr "$PR" || die "could not re-cut #${PR}"
-        exit 0
-    fi
-    [ "$rc" -eq 0 ] || die "merge refused for #${PR}"
+    merge_or_recut "${PR}"
     exit 0
 fi
 
