@@ -241,6 +241,14 @@ def main(argv=None):
         default=[],
         help="prefix whose forwarding header is believed; repeatable",
     )
+    # render_policy() has taken a bind since the topology table was written, and its comment says a
+    # deployment supplies the real one - but the CLI never exposed it, so a host listening anywhere
+    # other than the topology's example port could not render its own policy without editing the
+    # generated file, which is the one thing the header tells it not to do.
+    parser.add_argument(
+        "--bind",
+        help="address this host actually listens on; defaults to the topology's example bind",
+    )
     parser.add_argument("--spool-dir", default="/var/lib/fleet-filter/spool")
     parser.add_argument("--map", dest="map_path", default="/etc/fleet-filter/quarantine.map")
     parser.add_argument("--source-commit", default="unknown", help="tree the policy was rendered from")
@@ -263,6 +271,7 @@ def main(argv=None):
             cert=args.cert,
             key=args.key,
             trusted_proxies=args.trusted_proxy,
+            bind=args.bind,
             spool_dir=args.spool_dir,
             map_path=args.map_path,
             source_commit=args.source_commit,

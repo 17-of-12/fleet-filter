@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
-.venv/
+# `.venv` and not only `.venv/`: a pattern with a trailing slash matches directories only, and
+# bin/cve-worker.sh gives every CVE worktree a *symlink* called .venv. Git left that untracked, so
+# every worktree looked dirty and bin/release-cve.sh refused to release it.
+.venv
 .venv-*/
 .cache/
 *.orig

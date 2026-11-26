@@ -93,6 +93,16 @@ rsync -a --delete --exclude '.git' "$EXPORT_DIR"/ "$WORKTREE"/
 cd "$WORKTREE"
 if [ -z "$(git status --porcelain)" ]; then
     note "nothing to publish: the export matches the published tree"
+    # In --pr mode the caller needs a branch name to open, and the published commit is already on
+    # one: HEAD is that branch, put there by the run that created it. Exiting silently here costs
+    # the caller its answer, so the branch is reported in both paths.
+    if [ "$VIA_PR" -eq 1 ]; then
+        current=$(git branch --show-current)
+        case "$current" in
+            release/*) note "release branch: $current" ;;
+            *) note "nothing to report: HEAD is on '${current:-detached}', not a release branch" ;;
+        esac
+    fi
     exit 0
 fi
 
@@ -119,24 +129,29 @@ if [ "$VIA_PR" -eq 1 ]; then
     note "release branch: $BRANCH"
 fi
 
-# 4. Fast-forward only. The token goes in the environment, not argv, so it does not appear in ps.
+# 4. Push. The token is minted here unless a file was given: an installation token expires after an
+#    hour, and a stale file fails as an auth prompt hours later rather than where it was written.
 if [ -n "$TOKEN_FILE" ]; then
-    [ -r "$TOKEN_FILE" ] || die "cannot read token file: $TOKEN_FILE"
+    [ -r "$TOKEN_FILE" ] || die "cannot read token file: ${TOKEN_FILE}"
     TOKEN=$(tr -d '[:space:]' < "$TOKEN_FILE")
-    if [ "$VIA_PR" -eq 1 ]; then
-        GIT_CONFIG_COUNT=1 \
-        GIT_CONFIG_KEY_0=http.extraheader \
-        GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" \
-            git push --quiet origin "$BRANCH":"$BRANCH" || die "could not push the release branch"
-        note "pushed branch $BRANCH; open the pull request next:"
-        note "  bin/publish-open-pr.py --branch $BRANCH --title \"$(git log --format=%s -1)\""
-        exit 0
-    fi
+else
+    TOKEN=$("${REPO_ROOT}/bin/github-token.py") || die "could not mint a GitHub token"
+fi
+
+push_with_token() {
     GIT_CONFIG_COUNT=1 \
     GIT_CONFIG_KEY_0=http.extraheader \
     GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)" \
-        git push --quiet origin HEAD:main || die "push rejected: this clone is behind the remote (pull, do not force)"
-else
-    git push --quiet origin HEAD:main || die "push rejected: this clone is behind the remote (pull, do not force)"
+        git push --quiet "$@"
+}
+
+if [ "$VIA_PR" -eq 1 ]; then
+    push_with_token origin "$BRANCH":"$BRANCH" || die "could not push the release branch"
+    note "pushed branch ${BRANCH}"
+    note "  bin/publish-open-pr.py --branch ${BRANCH} --title \"$(git log --format=%s -1)\""
+    exit 0
 fi
-note "pushed $(git log --format=%h -1) to $REMOTE"
+
+push_with_token origin HEAD:main ||
+    die "push rejected: this clone is behind the remote (pull, do not force)"
+note "pushed $(git log --format=%h -1) to ${REMOTE}"

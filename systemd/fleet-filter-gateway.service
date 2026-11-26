@@ -50,6 +50,8 @@ ExecStart=/usr/local/bin/fleet-filter-gateway \
 # /h2probe- is the CVE-2026-119618 PoC path shape, so the deployed test listener can prove the
 # detection-to-claim chain end to end.
 Restart=on-failure
+# SIGHUP re-reads the policy and swaps TLS material when the certificate changed; no connection drop.
+ExecReload=/bin/kill -HUP $MAINPID
 RestartSec=2s
 StartLimitIntervalSec=60
 StartLimitBurst=5

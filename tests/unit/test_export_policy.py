@@ -69,7 +69,7 @@ class InternalBookkeepingTest(unittest.TestCase):
                   r"\bdesign records?\b", r"\bhandoffs?\b",
                   # Notes addressed to the maintainer: a decision we have not taken, or a host only
                   # our deployment has.
-                  r"\bowner (?:decision|directive)\b", r"\blab-web01\b", r"\butility\.is\b",
+                  r"\bowner (?:decision|directive)\b", r"\blab-web01\b", r"\butility\.is\b", r"\blab-web01\b",
                   r"\bff-(?:apache|control|wp|fpm)\b")
         offenders = []
         for doc in self.published_files():

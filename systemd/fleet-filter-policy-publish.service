@@ -1,0 +1,21 @@
+# Render every registered host's policy and sign it, so hosts have something to pull.
+#
+# Pull distribution needs a publisher on a timer: without one the directory goes stale and every host
+# keeps fetching yesterday's policy, which looks like success from both ends.
+[Unit]
+Description=Render and sign per-host policy for distribution
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/fleet-filter/cve-triage.env
+Environment=FLEET_FILTER_REPO=/home/user/projects/fleet-filter
+ExecStart=/usr/local/sbin/fleet-filter-publish-policies \
+    --out /var/lib/fleet-filter/publish \
+    --signing-key /etc/fleet-filter/policy-signing.key \
+    --binary /usr/local/bin/fleet-filter-gateway
+Nice=10
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
