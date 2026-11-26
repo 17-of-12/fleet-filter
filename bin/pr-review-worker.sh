@@ -126,44 +126,50 @@ LOG="${LOG_DIR}/pr-${PR}-$(date -u +%Y%m%dT%H%M%SZ).log"
 
 PROMPT=$(cat <<PROMPT_END
 Finish the release of pull request #${PR} in 17-of-12/fleet-filter. Nobody else will do it: the
-session that opened it ran out of time, which is why it is open with a green gate and no verdict.
-Work in ${REPO}. Read the skill section "Release review" and follow it exactly - three roles.
+session that opened it ran out of time. Work in ${REPO}. The skill section "Release review" is the
+procedure; this is the budget that makes it fit.
 
-STAGE 0 - read the pull request itself, not only its diff.
-  bin/review-packet.sh --pr ${PR} --out tmp/review-${PR}
-  Read meta.json (the PR body says what the author claims), commits.txt, files.txt, diff.patch.
+BUDGET - the last session spent 56 minutes and 63 bash calls on a two-file diff. That was exploration,
+not review. Hold to this:
+  * verification is at most TEN tool calls. Past that you are exploring, not verifying - stop and act
+    on what you measured.
+  * read the files a finding names. Use bash only for a measurement read cannot make: a sha256 of the
+    published file, one test file that is itself the finding. No git log, no git diff, no grep -r over
+    the tree - commits.txt and files.txt in the packet already answer those.
+  * do not run bin/check.sh --all; CI runs it. One test file you touched, nothing more.
+  * a diff of three files or fewer with no source change is ONE pass. Do not give a version pin the
+    procedure of a protocol change.
 
-STAGE 1 - reviewer subagent, adversarial.
-  Spawn a subagent of the read-only review class (qwen-reviewer) with the packet directory and an
-  adversarial brief: assume the change is wrong and try to prove it. Content first (a counterexample,
-  a request that slips past the new rule, a test that passes for the wrong reason, a doc sentence the
-  code does not support), then the git record (does each commit message match what it touches, did
-  unrelated changes ride along), then style only where it obscures meaning. Ask for VERDICT plus NOTES.
+STAGE 0 - the packet, once.
+  bin/review-packet.sh --pr ${PR} --out tmp/review-${PR}   (skip if it exists)
+  meta.json is what the author claims; commits.txt is what the commits claim; files.txt is scope;
+  diff.patch is the content. These four are the whole repository view you need.
 
-STAGE 2 - verifier subagent. This is the step that keeps a false finding from costing a round.
-  Spawn a SECOND subagent, not the one above. Give it the reviewer's findings verbatim and this job:
-  for each finding, prove it by quoting the file and line, or refute it by measuring - sha256 of the
-  file AS PUBLISHED (raw.githubusercontent.com/17-of-12/fleet-filter/<head-branch>/path), a count in
-  the recorded evidence, the actual command output. Answer per finding: CONFIRMED or REFUTED + evidence.
-  A reviewer on this project twice reported a store-hash mismatch by hashing the private tree instead
-  of the published one; the verifier is what catches that before it becomes a wasted round.
+STAGE 1 - reviewer subagent, adversarial, confined to the packet.
+  Spawn qwen-reviewer with the packet directory and: assume the change is wrong and try to prove it,
+  from these four files only - do not crawl the tree. Content first, then the git record, then style
+  only where it obscures meaning. Ask for VERDICT plus NOTES.
 
-STAGE 3 - you act, and only on verified findings.
-  CONFIRMED findings: fix them in ${REPO} on main, commit, then re-publish the SAME branch:
-    bin/publish-public.sh --worktree tmp/public-clone --pr --branch <the PR head branch> \
-        --token-file <a file holding a fresh token from bin/github-token.py> --message "<what changed>"
-  then bin/publish-open-pr.py --branch <branch> --title "<same title>" (it reuses the open PR).
-  REFUTED findings: do not "fix" them; say in the notes what the measurement showed.
-  Then record all three voices and merge:
+STAGE 2 - verifier subagent, on the findings and nothing else.
+  Spawn a SECOND subagent with the reviewer's findings verbatim. Per finding: CONFIRMED with file:line,
+  or REFUTED with a measurement (sha256 of the file AS PUBLISHED on the head branch, a count in the
+  evidence, a command's output). Nothing else. This is what stops a false finding costing a round - a
+  reviewer here twice reported a hash mismatch by hashing the private tree.
+
+STAGE 3 - act, on verified findings only.
+  CONFIRMED: fix in ${REPO} on main, commit, re-publish the SAME branch:
+    bin/publish-public.sh --worktree tmp/public-clone --pr --branch <head branch> \
+        --token-file <file with a fresh token from bin/github-token.py> --message "<what changed>"
+    bin/publish-open-pr.py --branch <branch> --title "<same title>"      # reuses the open PR
+  REFUTED: do not "fix" it; record the measurement in the notes.
+  Then, with all three voices:
     bin/publish-review.py --pr ${PR} --verdict <pass|fail> --notes "reviewer (adversarial): ... |
-      verifier: confirmed <list> / refuted <list> with the measurement | verified by primary: what I opened"
-    bin/publish-review.py --pr ${PR} --merge-only      # on pass, once the gate reports success
-     If that exits 3 the base has gone stale: run bin/recut-pr.py --pr ${PR}, which rebases the branch
-     onto current main and opens the replacement. Do not retry the merge.
+      verifier: confirmed <list> / refuted <list> + measurement | verified by primary: what I opened"
+    bin/publish-review.py --pr ${PR} --merge-only     # on pass, once the gate reports success
+  If that exits 3 the base is stale: bin/recut-pr.py --pr ${PR}. Do not retry the merge.
 
-Never open a second pull request for the same work. If a defect is real and you cannot fix it inside
-this session, post an honest FAIL naming the file and line - that is a better state than a merge
-nobody checked.
+Never open a second pull request for the same work. A FAIL naming file and line is a better outcome
+than a merge nobody checked.
 PROMPT_END
 )
 
