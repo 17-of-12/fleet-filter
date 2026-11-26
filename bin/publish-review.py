@@ -139,6 +139,16 @@ def missing_roles(notes):
     return [label for label, pattern in ROLES if not pattern.search(text)]
 
 
+def machine_notes_ok(notes):
+    """Whether --machine notes state what was checked where the message says to look for it.
+
+    The flag exists so a reader can tell a deterministic verdict from an agent review, and a substring
+    test let any note pass by mentioning the words anywhere ("looks fine, machine-checked: sort of").
+    The requirement is a prefix, because that is what the error message promises.
+    """
+    return (notes or "").lstrip().startswith("machine-checked:")
+
+
 def post_check(token_value, pr, verdict, notes):
     """Create the `agent-review` check run on the PR's head commit."""
     conclusion = "success" if verdict == "pass" else "failure"
@@ -162,6 +172,8 @@ def main(argv=None):
     parser.add_argument("--show-diff", action="store_true", help="print the diff and exit")
     parser.add_argument("--verdict", choices=("pass", "fail"), help="the reviewer's decision")
     parser.add_argument("--notes", default="", help="why, in the reviewer's words")
+    parser.add_argument("--machine", action="store_true",
+                        help="a deterministic check produced this verdict, not an agent review")
     parser.add_argument("--no-merge", action="store_true", help="post the check but do not merge")
     parser.add_argument("--merge-only", action="store_true",
                         help="merge an already-posted pass, without posting another check")
@@ -173,6 +185,19 @@ def main(argv=None):
     if args.show_diff:
         show_diff(token_value, args.pr)
         return 0
+
+    if args.merge_only or args.verdict == "pass":
+        # Strict required checks compare the commit being merged. If main moved since this pull request
+        # was cut, a rebase merge produces a commit neither check ever saw, and GitHub answers 405 with
+        # "required status checks are expected" - which reads like a pending check and is not. Refuse
+        # here, with the reason, instead of retrying for ever.
+        base = ((pr.get("base") or {}).get("sha") or "")[:12]
+        status, main_ref = call("/repos/%s/%s/git/refs/heads/main" % (OWNER, REPO), token_value)
+        head_sha = ((main_ref or {}).get("object") or {}).get("sha", "")[:12] if status == 200 else ""
+        if base and head_sha and base != head_sha:
+            print("publish-review: base is stale (pr %s, main %s); a rebase merge would land a commit "
+                  "neither check ran on" % (base, head_sha))
+            return 3
 
     if args.merge_only:
         # The check and the merge are separate on purpose: `gate` needs time to report, and a merge
@@ -188,7 +213,10 @@ def main(argv=None):
     if not args.verdict:
         parser.error("one of --show-diff, --verdict pass, --verdict fail or --merge-only is required")
 
-    missing = missing_roles(args.notes)
+    missing = [] if args.machine else missing_roles(args.notes)
+    if args.machine and not machine_notes_ok(args.notes):
+        sys.exit("publish-review: --machine requires notes that start with what was checked "
+                 "(\"machine-checked: ...\"). Nothing was posted.")
     if args.verdict == "pass" and missing:
         sys.exit("publish-review: refusing to post a pass verdict that does not name the three roles "
                  "that produced it; missing: " + ", ".join(missing) + ". Nothing was posted.")
