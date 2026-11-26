@@ -88,6 +88,21 @@ def call(path, token_value, method="GET", body=None):
         return error.code, error.read().decode("utf-8", "replace")[:300]
 
 
+def delete_release_branch(token_value, pr):
+    """Delete the merged release branch, and only it.
+
+    Both merge paths call this: the branch a release was reviewed on has no further use once main holds
+    the commit, and leaving them behind made the branch list unreadable. Guarded by the `release/`
+    prefix so a mistake here cannot delete main or a dependency-update branch, and best effort - a
+    failure must not turn a successful merge into an error.
+    """
+    branch = (pr.get("head") or {}).get("ref") or ""
+    if not branch.startswith("release/"):
+        return
+    status, _ = call("/repos/%s/%s/git/refs/heads/%s" % (OWNER, REPO, branch), token_value, "DELETE")
+    print("deleted branch %s (%s)" % (branch, status))
+
+
 def pull(token_value, number):
     """The pull request, or exit when it does not exist."""
     status, pr = call("/repos/%s/%s/pulls/%d" % (OWNER, REPO, number), token_value)
@@ -167,13 +182,7 @@ def main(argv=None):
         if status != 200:
             sys.exit("publish-review: merge refused (%s): %s" % (status, merged))
         print("merged #%d: %s" % (args.pr, merged.get("message", "")))
-        branch = (pr.get("head") or {}).get("ref") or ""
-        if branch.startswith("release/"):
-            # A merged release branch is clutter: the release lives in main now. Best effort - a
-            # failure here must not turn a successful merge into an error.
-            status, _ = call("/repos/%s/%s/git/refs/heads/%s" % (OWNER, REPO, branch), token_value,
-                             "DELETE", None)
-            print("deleted branch %s (%s)" % (branch, status))
+        delete_release_branch(token_value, pr)
         return 0
 
     if not args.verdict:
@@ -200,6 +209,7 @@ def main(argv=None):
         # is the correct outcome - a merge that needs a retry is better than a merge nobody gated.
         sys.exit("publish-review: merge refused (%s): %s" % (status, merged))
     print("merged #%d: %s" % (args.pr, merged.get("message", "")))
+    delete_release_branch(token_value, pr)
     return 0
 
 
