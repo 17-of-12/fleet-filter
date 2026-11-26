@@ -4,7 +4,6 @@
 # or controller on any fleet host starts or serves through it, so `systemctl stop` it and served
 # traffic does not change. The console's own availability is the only thing this unit controls.
 Description=fleet-filter-ui: fleet console (Bundle Y)
-Documentation=file:///home/agent/projects/Fleet-Filter/the repository documentation
 
 [Service]
 Type=simple

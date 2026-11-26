@@ -23,12 +23,13 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(os.environ.get("FLEET_FILTER_REPO", Path(__file__).resolve().parent.parent))
 RENDERER = REPO / "bin" / "render-topology.py"
 
 # The gateway binary is not always present (a fresh control node, a CI container). Validation is

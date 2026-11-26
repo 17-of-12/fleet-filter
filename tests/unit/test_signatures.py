@@ -4,7 +4,9 @@ Signature store test harness - Fleet-Filter E16.
 
 Validates controller/signatures/signatures.yaml:
   1. every regex in the store compiles;
-  2. every `positive` string matches its own variant's pattern;
+  2. every `positive` string matches its own variant's pattern (for a body_marker variant, whose
+     match is a literal byte search over the body, the fixture is a body and the check is that
+     search: a fixture the harness cannot evaluate is a miss, not a skip);
   3. every `negative` string does NOT match its own variant's pattern;
   4. every variant that targets a header field carries log-line fixtures in the
      declared extended format (section 7 rule: a header-targeting signature on a
@@ -79,10 +81,21 @@ def parse_log_line(line):
 
 def evaluate(variant, raw):
     """
-    Decide whether `raw` (a bare URI, a bare header name, or a full log line)
+    Decide whether `raw` (a bare URI, a bare header name, a request body, or a full log line)
     is a hit for `variant`. Returns (hit, reason).
     """
     match = variant.get("match", {})
+
+    # Body-marker variants are enforced by a literal search over the body the gateway already
+    # buffers, so their fixture is a body (or the fragment of one the record quotes). Answering
+    # before the URI/header forms matters: `a=1&b=2` has no space so it would be tried as a URI,
+    # and a variant with no uri_regex has nothing to compare it against, which reported every
+    # body fixture as "neither a bare URI/header nor a parseable log line".
+    if "body_marker" in match:
+        marker = match["body_marker"]
+        hit = marker in raw
+        return hit, f"body_marker {marker!r} {'present' if hit else 'absent'} in fixture"
+
     record = parse_log_line(raw)
 
     # Bare header name test (header_regex variants).

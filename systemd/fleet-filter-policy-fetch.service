@@ -9,7 +9,6 @@
 # in force; if it is not, it restores the previous policy and fails the unit.
 [Unit]
 Description=Fetch and apply the filter gateway policy
-Documentation=file:/usr/local/share/doc/fleet-filter/POLICY-DISTRIBUTION.md
 After=network-online.target
 Wants=network-online.target
 

@@ -5,7 +5,6 @@
 # good cache (the stale-on-error rule in the repository documentation), which is why freshness belongs to this
 # timer and not to the app process.
 Description=fleet-filter-ui: refresh the fleet console cache (Bundle Y)
-Documentation=file:///home/agent/projects/Fleet-Filter/the repository documentation
 After=network-online.target
 Wants=network-online.target
 

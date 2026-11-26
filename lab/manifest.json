@@ -108,6 +108,26 @@
             8093
           ],
           "note": "mod_proxy_fcgi enablereuse=on; effect not observed here"
+        },
+        {
+          "container": "ff-php-115560",
+          "image": "localhost/ff-php-115560:8.4.26-vuln",
+          "version": "8.4.26-vuln",
+          "cve": "CVE-2026-115560",
+          "ports": [
+            8095
+          ],
+          "note": "php:8.4.26-apache with the reference lab's session.serialize_handler=php_serialize + upload-progress-on configuration and its LabGadget app (lab/php-115560/). Built because ff-php cannot host this CVE: its global handler is already `php`, so the serialiser the advisory says writes the session never runs and a null result there would prove nothing."
+        },
+        {
+          "container": "ff-php-115560-mit",
+          "image": "localhost/ff-php-115560:8.4.26-mit",
+          "version": "8.4.26-mit",
+          "cve": "CVE-2026-115560",
+          "ports": [
+            8097
+          ],
+          "note": "the same image and app with session.upload_progress.enabled=0 (the vendor mitigation), so the RCE can be shown to depend on that one setting rather than on the container"
         }
       ]
     },
