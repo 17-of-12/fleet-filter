@@ -33,6 +33,7 @@ SCRIPTS=(
     "publish-policies.py:fleet-filter-publish-policies"
     "pr-review-worker.sh:fleet-filter-pr-review"
     "prs-needing-review.py:fleet-filter-prs-needing-review"
+    "github-audit.py:fleet-filter-github-audit"
 )
 UNITS=(
     fleet-filter-cve-triage.service
@@ -43,6 +44,8 @@ UNITS=(
     fleet-filter-policy-publish.timer
     fleet-filter-pr-review.service
     fleet-filter-pr-review.timer
+    fleet-filter-github-audit.service
+    fleet-filter-github-audit.timer
 )
 
 install_one() {

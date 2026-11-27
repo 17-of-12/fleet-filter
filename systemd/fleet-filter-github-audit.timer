@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly repository security audit
+
+[Timer]
+OnCalendar=Mon 06:10
+RandomizedDelaySec=1800
+Persistent=true
+Unit=fleet-filter-github-audit.service
+
+[Install]
+WantedBy=timers.target

@@ -40,6 +40,19 @@ class Verdict(unittest.TestCase):
             "+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7",
             "-        uses: actions/checkout@38cb216a1b03431b0c71054e35238d04e0d1e652  # v6")])[0])
 
+    def test_an_action_pinned_behind_a_yaml_list_dash_is_clean(self):
+        """The line a real workflow step is written on starts with a list dash, not only the diff's.
+
+        `+      - uses: actions/checkout@sha  # v4` - the pattern anchored on `uses:` immediately after
+        the +/-, so the shape every workflow file actually contains failed the action-pin test and every
+        action bump was refused. The fix allows one optional list dash after the sign; a second dash, or
+        any other text before `uses:`, still fails the shape rather than being waved through.
+        """
+        self.assertTrue(CHECK.verdict([diff(
+            ".github/workflows/checks.yml",
+            "+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4",
+            "-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v3")])[0])
+
     def test_a_version_tag_action_bump_is_clean(self):
         """A workflow pinned to a tag rather than a SHA is still a version change."""
         self.assertTrue(CHECK.verdict([diff(".github/workflows/x.yml",

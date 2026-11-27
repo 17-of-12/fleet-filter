@@ -1,0 +1,17 @@
+# Weekly audit of the repository's security settings.
+#
+# Settings drift: a default changes, a feature gets turned off during an incident, and nobody
+# re-reads the settings page. Eight API fields say whether the repo is still where it was.
+[Unit]
+Description=Audit repository security settings
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=operator
+Group=operator
+Environment=HOME=/home/operator
+Environment=PATH=/home/operator/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
+Environment=FLEET_FILTER_REPO=/home/user/projects/fleet-filter
+ExecStart=/usr/local/sbin/fleet-filter-github-audit
