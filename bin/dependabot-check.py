@@ -76,7 +76,7 @@ PIN_PATTERNS = (
     ("lock checksum", (".lock",),
      re.compile(r"""^[+-]checksum\s*=\s*["'](?P<version>[0-9a-fA-F]{40,})["']""", re.I)),
     ("action pin", (".yml", ".yaml"),
-     re.compile(r"^[+-]\s*uses:\s*(?P<name>[\w.\-/]+)@"
+     re.compile(r"^[+-]\s*(?:-\s*)?uses:\s*(?P<name>[\w.\-/]+)@"
                 r"(?P<version>[0-9a-f]{40}|v?\d[\w.\-]*)", re.I)),
 )
 ALLOWED_FILES = (".txt", ".toml", ".yml", ".yaml", ".lock")

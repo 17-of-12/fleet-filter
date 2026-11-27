@@ -45,6 +45,20 @@ def api(path, method="GET", body=None):
         return json.loads(raw) if raw else None
 
 
+def rebase_onto(clone, head_sha, branch):
+    """Move the branch to head_sha and rebase it onto origin/main; return (ok, message).
+
+    Split out so it can be tested against a throwaway repository: this is the part that decides whether
+    a re-cut keeps the content, and a conflict here must stop rather than drop a change.
+    """
+    run(["git", "checkout", "--quiet", "-B", branch, head_sha], cwd=clone)
+    done = subprocess.run(["git", "rebase", "origin/main"], cwd=clone, capture_output=True, text=True)
+    if done.returncode != 0:
+        run(["git", "rebase", "--abort"], cwd=clone, check=False)
+        return False, done.stderr.strip()
+    return True, ""
+
+
 def main(argv=None):
     """CLI entry point: rebase the pull request onto main, push, replace it."""
     parser = argparse.ArgumentParser(description="Re-cut a pull request on current main")
@@ -78,12 +92,9 @@ def main(argv=None):
         print("recut: would rebase pull/%d/head onto main and push %s" % (args.pr, branch))
         return 0
 
-    run(["git", "checkout", "--quiet", "-B", branch, head_sha], cwd=clone)
-    done = subprocess.run(["git", "rebase", "origin/main"], cwd=clone, capture_output=True, text=True)
-    if done.returncode != 0:
-        run(["git", "rebase", "--abort"], cwd=clone, check=False)
-        print("recut: the branch conflicts with main; a person has to resolve it:\n"
-              + done.stderr.strip()[:500])
+    ok, message = rebase_onto(clone, head_sha, branch)
+    if not ok:
+        print("recut: the branch conflicts with main; a person has to resolve it:\n" + message[:500])
         return 1
     run(["git", "push", "--quiet", "origin", branch], cwd=clone)
 
