@@ -637,6 +637,117 @@ signatures:
           answered. See data/lab/poc-runs/CVE-2026-129496-20261126T052757Z.
 
   # ------------------------------------------------------------------
+  # CVE-2026-132165 - Drupal core installer reachable unauthenticated on an
+  # installed site ("Fail2Install", SA-CORE-2026-017, NVD 2026-11-26 via
+  # mlhess@drupal.org, CISA KEV 2026-11-24, EPSS 0.0838, CWE-306 "Missing
+  # Authentication for Critical Function"). The critical function is the
+  # site installer, core/install.php; on an installed site it still answers
+  # 200 to anonymous requests, and on the affected versions an attacker can
+  # drive it into reinstalling the site (attacker-chosen database, then code
+  # execution via the .htaccess quirk). Affected per NVD: 0.0.0..10.6.22,
+  # 11.0.0..11.3.22, 11.4.0..11.4.13 (lessThan semantics; fixed in 10.6.22,
+  # 11.3.22, 11.4.13). The lab victim is the vendor's own drupal:11.4.12
+  # image, installed against a real MariaDB, plus the fixed 11.4.13 twin
+  # (lab/drupal-132165/); every literal below is quoted from the vendor's
+  # published check set (curl -I /core/install.php, curl -IL /install.php,
+  # curl -I /core/install.php/foo), the advisory's own Apache mitigation
+  # (<Location "/core/install.php"> Require all denied), and the public
+  # write-up's reproduction request (/core/install.php?langcode=en&profile=
+  # standard, stepsecurity.io/blog/fail2install-cve-2026-132165).
+  # ------------------------------------------------------------------
+  - id: CVE-2026-132165
+    cve: CVE-2026-132165
+    title: Drupal core installer reinstall RCE (Fail2Install) - the installer answers an installed site
+    source: https://www.drupal.org/sa-core-2026-017
+    class: exploit
+    # `app`: the vulnerable code is Drupal core's installer PHP, downstream of Apache; the
+    # gateway match is DECEPTION of a request that would otherwise be served (the reasoning
+    # CVE-2026-63030 records for app-layer routes). It is also the vendor's own mitigation
+    # expressed in the gateway's language - their Apache fix is a <Location> deny on the
+    # same fixed URI, and their nginx guide explicitly warns that `location =` (the exact
+    # match an inline-only rule would be) is not enough because the /core/install.php/foo
+    # spelling still runs; here the PATH_INFO spelling is a fixture of the variant rather
+    # than a discovery.
+    vuln_layer: app
+    response_profile_default: slow_404_app_shaped
+    verdict_to_report: vulnerable
+    applies_to: [all]
+    fp_guard: []
+    ttl: 86400
+    added: 2026-11-28
+    review_by: 2027-05-28
+    evidence_max_bytes: 512
+
+    variants:
+
+      # The attack surface itself: the fixed URI the CVE exists around, in all three
+      # spellings the vendor's own check set probes. This is the rare signature whose
+      # regex has a single literal prefix that fully describes it (`/core/install.php`, the
+      # gateway's whole detection surface in one string) - unlike the 63030 and 129474
+      # entries there is no alternation to declare and no prefix projection to widen:
+      # the projection and the regex describe the same set.
+      # The variant carries no method clause on purpose: the surface is the GET the
+      # attacker sends, the HEAD the vendor's `curl -I` check performs, and the POST that
+      # submits the reinstall form. 129474 had to state the cost of a method its gateway
+      # projection ignores; here all methods SHOULD be claimed, so there is nothing to
+      # negotiate and the store says so.
+      - name: installer_core
+        tier: [1, 2]
+        match:
+          uri_regex: '^/core/install\.php(?:[/?].*)?$'
+        response_profile: slow_404_app_shaped
+        verdict_to_report: vulnerable
+        tests:
+          positive:
+            - /core/install.php                                    # vendor check 1 (curl -I)
+            - /core/install.php?langcode=en&profile=standard       # the write-up's own exploit request
+            - /core/install.php/foo                                # vendor check 3 (the PATH_INFO spelling their nginx guide demands)
+          negative:
+            - /core/install.phpx          # the extension is .php; the prefix projection stops at the same place the regex does
+            - /core/install.php-old
+            - /core/INSTALL.txt           # the readme Apache would also happily serve
+            - /install.php                # the root spelling is the variant below, not this one
+            - /core/update.php            # update.php is a different exposed script (and SA-CORE-2026-018 / the queued GHSA-qqvx-wc6h-6prm), not the installer
+            - /core/modules/views/views.module
+        verify: >-
+          Measured 2026-11-28 against ff-drupal-132165 (drupal:11.4.12, installed; its own
+          X-Generator says Drupal 11) and both gateway arms rendered from this store: direct
+          at the victim the variant's three positive spellings all returned the installed-site
+          installer page ('Drupal already installed'); through the control arm the same
+          requests were answered with the inline exploit-probe profile and their claim
+          records spooled (two prefix:/core/install.php, one prefix:/install.php), while a
+          benign GET / from a fresh source was still proxied by the app (200). See
+          data/lab/poc-runs/CVE-2026-132165-20261128T142000Z.
+
+      # The second URI of the vendor's check set (curl -IL /install.php). On Drupal 8+ the
+      # site's own Apache answers it with a 301 to /core/install.php (measured from this
+      # store's victim, header quoted in the run's check transcript) - so a site that
+      # "deleted" its root install.php still hands the installer to anyone who asks - and
+      # on D6/D7 layouts the file itself sat at the document root, which is where the
+      # missing-authentication class of the CVE applied verbatim. Claiming it from the
+      # gateway is what makes the 301 stop being a free route to the installer.
+      - name: install_php_root
+        tier: [1, 2]
+        match:
+          uri_regex: '^/install\.php(?:[/?].*)?$'
+        response_profile: slow_404_app_shaped
+        verdict_to_report: vulnerable
+        tests:
+          positive:
+            - /install.php           # vendor check 2; on this victim the raw answer is 301 -> /core/install.php (measured, quoted in the run)
+            - /install.php/foo
+          negative:
+            - /core/install.php      # the D8+ location: variant installer_core
+            - /install.phpx
+            - /sites/default/install.php
+        verify: >-
+          Measured 2026-11-28 through the control arm rendered from this store: GET
+          /install.php from a fresh source was claimed (claim=prefix:/install.php) and
+          answered inline instead of being served the victim's 301; the raw 301 and its
+          Location header are recorded from the direct arm in
+          data/lab/poc-runs/CVE-2026-132165-20261128T142000Z.
+
+  # ------------------------------------------------------------------
   # CVE-2026-119618 - mod_http2 assign_headers() race, httpd 2.4.55-2.4.70.
   # Variants are enumerated from the public PoC's own SHAPES registry, not
   # invented: github.com/googlesky/CVE-2026-119618 poc/poc.py lines 303-314

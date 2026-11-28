@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "updated": "2026-11-26",
+ "updated": "2026-11-28",
  "hosts": [
   {
    "name": "ff-apache01",
@@ -188,6 +188,34 @@
       8103
      ],
      "note": "the patched engine php:8.4.28-apache with the same app and the same vulnerable ini - the fix side of the victim pair (measured: answers the POST with the memory fatal, worker alive)."
+    },
+    {
+     "container": "ff-drupal-db",
+     "image": "docker.io/library/mariadb:11.4",
+     "version": "11.4",
+     "cve": null,
+     "ports": [],
+     "note": "MariaDB for the two Drupal victims with max-connections=25 - the pool size the Fail2Install write-up calls its reliable reproduction config; not port-published, same convention as ff-wp-db."
+    },
+    {
+     "container": "ff-drupal-132165",
+     "image": "docker.io/library/drupal:11.4.12",
+     "version": "11.4.12",
+     "cve": "CVE-2026-132165",
+     "ports": [
+      8104
+     ],
+     "note": "provisioned 2026-11-28 via lab/drupal-132165/provision.sh: the affected 11.4.x release (NVD 11.4.0..11.4.12) installed against drupal_v with drush, the state the CVE attacks (an installed site whose core/install.php still answers). The write-up's exact image+version pairing."
+    },
+    {
+     "container": "ff-drupal-132165-patched",
+     "image": "docker.io/library/drupal:11.4.13",
+     "version": "11.4.13",
+     "cve": "CVE-2026-132165",
+     "ports": [
+      8105
+     ],
+     "note": "the fixed release, same provisioning and the second database (drupal_p): for this CVE the fix does not remove the reachable installer (measured: same 200 'Drupal already installed' answer), which is why the vendor still tells every site to block it - the fact the twin exists to show."
     }
    ]
   },
