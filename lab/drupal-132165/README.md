@@ -51,7 +51,7 @@ arguing it, the way `lab/php-129496` measures the fix side of its pair.
 - **the planted file.** `conf/planted-x.php` (`<?php echo 40+2;`) reproduces StepSecurity's
   isolated `.htaccess` test on this image: direct `/modules/x.php` → `403` (the stock deny), while
   `/modules/x.php/core/x.php` → `200` and *executes* (`42` comes back) because the stock exception
-  only inspects the URL's tail - and it is unchanged in the fixed releases. The A/B run records this
+  only inspects the URL's tail - and it is unchanged in the fixed releases. run-direct.log records this
   on the vulnerable container; it is documented in the run's summary, not made a signature variant
   (the gateway's prefix projection cannot enumerate arbitrary filenames).
 - **the race we did not re-run.** The write-up's exploit needs the site's database to refuse the
