@@ -1,0 +1,43 @@
+# Publish site/ as the project's landing page.
+#
+# A page at a stable URL is what makes the project findable at all - a repository is only indexed if
+# something crawls it, and a github.io page with a canonical link, a description and a sitemap is a
+# crawl target in a way that a bare repository listing is not.
+#
+# Actions are pinned by sha in this repository (enforced by the account setting), so these are the
+# immutable commit references for the versions in the comment beside each.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # actions/checkout v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      # actions/configure-pages v5.0.0
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      # actions/upload-pages-artifact v3.0.1
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: site
+      # actions/deploy-pages v4.0.5
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

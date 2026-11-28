@@ -11,26 +11,50 @@
 # Matching is by CPE vendor:product from the NVD record. When a record carries no CPE (common
 # immediately after publication), `keywords` decides, and anything matched that way is marked
 # `via: keyword` in the output so the weaker evidence is visible rather than averaged in.
+#
+# `kind` says what sort of thing the entry is (webapp, server, language, library). CPE part `a` calls
+# ffmpeg and Chrome applications, so the feed cannot answer "are we defending apps or plumbing";
+# the word has to be declared here, because a field nobody sets is a field that always reads
+# `unclassified`.
 
 estate:
-  - name: apache httpd (lab victim 2.4.49, ff-apache01 2.4.66)
+  # Declared by name, like WordPress, and for a sharper reason. The lab victim is 2.4.49 and the
+  # fleet host is 2.4.66, but a version list makes the second number the estate's opinion about
+  # every CVE: a 2.4.71 vulnerability is still an Apache httpd vulnerability, and the patch level a
+  # host runs tomorrow is not the one it runs today. `running` stays as a record of what is deployed
+  # for an operator to read; it is no longer what gates the match.
+  - name: apache httpd (2.4.49 and 2.4.66 deployed; declared by name)
     vendor: apache
     product: httpd
+    kind: server
+    any_version: true
     running: ["2.4.49", "2.4.66"]
 
-  - name: php engine (php:8.4.26-apache)
+  # Same reasoning: PHP ships a security release most months, and a CVE naming a version newer than
+  # the one deployed is still a shape this proxy will see the week the host is patched.
+  - name: php engine (8.4.26 deployed; declared by name)
     vendor: php
     product: php
+    kind: language
+    any_version: true
     running: ["8.4.26"]
 
-  - name: wordpress (behind the lab Apache once a victim exists)
+  # Any version, on purpose. The lab victim is 6.9.4 and one host was 6.8; pinning either number
+  # under-reports every other install, and a WordPress site is upgraded by whoever notices rather
+  # than by a change window. What matters for triage is that a CVE names WordPress at all - the
+  # signature is written against a request shape, and the shape does not change with a minor bump.
+  - name: wordpress (any version; the site is upgraded when someone notices)
     vendor: wordpress
     product: wordpress
-    running: ["6.8"]
+    kind: webapp
+    any_version: true
 
-  - name: openssl (TLS endpoints)
+  # TLS library: same. Pinning 3.0.13 would hide every CVE for 3.0.14 onwards.
+  - name: openssl (TLS endpoints, declared by name)
     vendor: openssl
     product: openssl
+    kind: library
+    any_version: true
     running: ["3.0.13"]
 
 # Used only when a CVE has no CPE configuration. Matching a phrase here is weaker evidence than a

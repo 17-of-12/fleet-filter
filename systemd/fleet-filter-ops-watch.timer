@@ -1,0 +1,11 @@
+[Unit]
+Description=Six-hourly health check of the release loop
+
+[Timer]
+OnCalendar=*-*-* 00/6:05:00
+RandomizedDelaySec=300
+Persistent=true
+Unit=fleet-filter-ops-watch.service
+
+[Install]
+WantedBy=timers.target

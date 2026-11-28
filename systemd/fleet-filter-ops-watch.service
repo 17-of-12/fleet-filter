@@ -1,0 +1,19 @@
+# Health check of the release loop, recorded every six hours.
+#
+# The loop runs on timers; this watches the timers. It repairs only an inactive unit it manages, and
+# writes everything else to /var/lib/fleet-filter/ops-watch.log - a watcher that "fixes" what it does
+# not understand turns a quiet failure into a loud one.
+[Unit]
+Description=Watch the release loop and record its health
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=operator
+Group=operator
+Environment=HOME=/home/operator
+Environment=PATH=/home/operator/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
+Environment=FLEET_FILTER_REPO=/home/user/projects/fleet-filter
+Environment=FLEET_FILTER_WATCH_LOG=/var/lib/fleet-filter/ops-watch.log
+ExecStart=/usr/local/sbin/fleet-filter-ops-watch

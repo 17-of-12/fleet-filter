@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://17-of-12.github.io/fleet-filter/sitemap.xml

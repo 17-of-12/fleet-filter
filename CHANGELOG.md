@@ -9,6 +9,32 @@ project will not cut a 1.0 until the policy format has survived a release withou
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-28
+### Added (0.2.0)
+
+- **Coverage no longer depends on enumerating software.** Estate entries declare a product by name:
+  `any_version` marks a product whose patch level is a point in time rather than a fact, so a CVE for
+  a version the host has not shipped yet is still a candidate. Hits are labelled `cpe-any-version`.
+- **A second question, answered separately.** `bin/web-candidates.py` and `config/web-surface.yaml`
+  list what speaks HTTP, including products the estate does not run. The default gate needs no
+  taxonomy: an unauthenticated network path with an exploitation signal (KEV or EPSS) is enough.
+  Declared products are labelled and ordered first instead of gating the list.
+- **A decision stage between a signal and exploit work.** `bin/candidate-review.sh` has a session
+  accept or reject each candidate against five closed reason codes, records both outcomes with a
+  timestamp, and treats an unanswered candidate as missing rather than accepted. Accepted items are
+  written in the queue format the worker already reads; rejects never reach `blocked/`, which means
+  "tried and failed". `--replay` reuses recorded decisions, so the stage is testable and a judgement
+  survives a lost queue directory.
+- **Per-application runbooks.** `lab/apps/<application>.md` carries what the generic procedure cannot:
+  build commands, preconditions the image does not ship, the request that proves a victim vulnerable
+  and its negative control, and the walls earlier sessions hit. The worker prompt requires reading one
+  before building and updating it before stopping, success or failure.
+- **A six-hourly ops watch** (`bin/ops-watch.py`) recording timer, queue, pull-request, drift and disk
+  state; it repairs only an inactive unit it manages.
+- **A weekly repository security audit** (`bin/github-audit.py`): eight settings read from the API
+  fields that carry them, with a timer, because settings drift silently.
+
+
 ### Added
 
 - Public exporter that derives a publishable tree, rewrites estate identifiers, and refuses to emit
