@@ -47,6 +47,10 @@ $SSH "$P run -d --name ff-drupal-132165-patched --network ff-drupal -p 8105:80 \
 #    installed site means writing the settings file that points at the site's database.
 #    conf/settings-vuln.php and conf/settings-patched.php are the files drush generated,
 #    captured back from the containers; feeding them in reproduces the same installs.
+#    Note on the two extra copies below: each pair also lands a PHP file on services.yml,
+#    which is YAML - that state is not loadable as it stands, and the site only works
+#    because step 4's drush site:install regenerates services.yml afterwards. Recorded as
+#    the run did it; the settings.php copy is the one the install actually reads.
 cd "$(dirname "$0")"
 scp -q -o BatchMode=yes conf/settings-vuln.php operator@$HOST:/tmp/settings-v.php
 scp -q -o BatchMode=yes conf/settings-patched.php operator@$HOST:/tmp/settings-p.php
