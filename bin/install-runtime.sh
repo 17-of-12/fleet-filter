@@ -34,6 +34,9 @@ SCRIPTS=(
     "pr-review-worker.sh:fleet-filter-pr-review"
     "prs-needing-review.py:fleet-filter-prs-needing-review"
     "github-audit.py:fleet-filter-github-audit"
+    "ops-watch.py:fleet-filter-ops-watch"
+    "web-candidates.py:fleet-filter-web-candidates"
+    "candidate-review.sh:fleet-filter-candidate-review"
 )
 UNITS=(
     fleet-filter-cve-triage.service
@@ -46,6 +49,8 @@ UNITS=(
     fleet-filter-pr-review.timer
     fleet-filter-github-audit.service
     fleet-filter-github-audit.timer
+    fleet-filter-ops-watch.service
+    fleet-filter-ops-watch.timer
 )
 
 install_one() {

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fleet-filter — virtual patching for web servers, with an evidence ledger</title>
+<meta name="description" content="A reverse proxy that refuses known exploit requests before they reach the origin, with a signature store, bounded deception, and a public ledger of exploits it actually blocks.">
+<link rel="canonical" href="https://17-of-12.github.io/fleet-filter/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="fleet-filter — virtual patching for web servers">
+<meta property="og:description" content="Rust reverse proxy that classifies hostile requests, refuses known exploit shapes, and records what it blocked. MIT licensed.">
+<meta property="og:url" content="https://17-of-12.github.io/fleet-filter/">
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 46rem;
+         margin: 0 auto; padding: 2.5rem 1.25rem; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2.25rem; }
+  p.lede { font-size: 1.1rem; opacity: .85; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .9em; }
+  pre { padding: .9rem 1rem; overflow-x: auto; border: 1px solid #8884; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: .75rem 0; }
+  th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid #8883; }
+  a { color: #2b6cb0; }
+  footer { margin-top: 3rem; font-size: .85rem; opacity: .7; }
+</style>
+</head>
+<body>
+<h1>fleet-filter</h1>
+<p class="lede">A reverse proxy that refuses known exploit requests before they reach the origin server — and
+publishes the evidence for every exploit it claims to stop.</p>
+
+<p>Most web servers cannot be patched the moment a CVE lands, and a CVE with public exploit code is
+being used within hours. fleet-filter sits in front of the origin, recognises the request shapes those
+exploits use, and refuses them. It does not try to be a general-purpose WAF: it holds a small set of
+signatures, each tied to a named vulnerability and a recorded demonstration.</p>
+
+<h2>What it does</h2>
+<ul>
+  <li><strong>Refuses known exploit shapes</strong> at the proxy — path traversal, request smuggling,
+      deserialisation markers, upload-progress payloads — before the request reaches the application.</li>
+  <li><strong>Bounded deception</strong>: a probe that is not a known exploit can be answered by a
+      tarpit that holds the connection and wastes the attacker's time. Bounded on purpose, so it cannot
+      be turned into a denial of service against you.</li>
+  <li><strong>An evidence ledger</strong>. Every entry names a CVE, records the exploit run without the
+      control, then the same run through it, and states a verdict: blocked, neutralised, unverified or
+      uncovered. Entries whose evidence does not exist are marked, not quietly upgraded.</li>
+</ul>
+
+<h2>Install from the release</h2>
+<pre><code>cargo build --release --manifest-path gateway/Cargo.toml
+./target/release/fleet-filter-gateway --help</code></pre>
+<p>Configuration is a single TOML policy bundle: listener, TLS material, the signature store, the
+detection mode, and the upstream. Signed policy distribution is built in — a host verifies a detached
+RSA signature over the policy digest with a key provisioned out of band, before the policy is parsed.</p>
+
+<h2>The ledger is the point</h2>
+<table>
+  <tr><th>Verdict</th><th>Means</th></tr>
+  <tr><td>blocked</td><td>the exploit works without the control and fails through it, recorded</td></tr>
+  <tr><td>neutralised</td><td>the attack succeeds but delivers nothing useful through it</td></tr>
+  <tr><td>unverified</td><td>an entry exists, the evidence does not</td></tr>
+  <tr><td>uncovered</td><td>a known exploit this proxy does not stop</td></tr>
+</table>
+<p>Publishing the uncovered ones is deliberate. A security tool that only lists its successes is
+selling, not reporting.</p>
+
+<h2>Where the code is</h2>
+<p><a href="https://github.com/17-of-12/fleet-filter">github.com/17-of-12/fleet-filter</a> — MIT licensed.
+Rust gateway, a Python controller that renders per-host policies, and the exploit corpus the signatures
+are drawn from.</p>
+
+<footer>
+  <p>fleet-filter · MIT · <a href="https://github.com/17-of-12/fleet-filter/releases">releases</a> ·
+  <a href="https://github.com/17-of-12/fleet-filter/blob/main/SECURITY.md">security policy</a></p>
+</footer>
+</body>
+</html>

@@ -99,21 +99,33 @@ class TriageTest(unittest.TestCase):
         self.assertEqual([item["id"] for item in queue], ["CVE-2026-0001"])
         self.assertEqual(excluded, [])
 
-    def test_a_version_outside_the_range_is_removed_at_reachability(self):
-        """A range above every deployed version removes the CVE before anything else looks at it.
+    def test_a_version_the_estate_does_not_run_is_still_reachable_when_declared_by_name(self):
+        """The estate declares Apache by name, so a 2.4.70+ CVE is still an Apache CVE here.
 
-        The estate runs two Apache versions, so a range has to miss both. Worth stating: a fixture
-        that "looks out of range" but still covers 2.4.66 matching here is correct behaviour, not a
-        leak - it caught exactly that mistake when this test was first written.
+        This asserts the opposite of what it asserted before the change, and that is the point: a
+        proxy outlives a patch cycle, so a directory of deployed versions was making the estate's
+        opinion about CVEs for versions it has not shipped yet. The bug is not in 2.4.66 - it is in
+        whatever 2.4.xx the host runs the week this lands.
         """
         record = cve(
             "CVE-2026-0002", "apache", "httpd", APACHE_RANGE,
-            # The estate runs 2.4.49 and 2.4.66, so the range has to miss both to miss the estate.
             bounds={"versionStartIncluding": "2.4.70", "versionEndExcluding": "2.4.80"},
         )
         queue, excluded = self.run_funnel([record], epss={"CVE-2026-0002": 0.9})
-        self.assertEqual(queue, [])
-        self.assertEqual(excluded[0]["stage"], "reachable")
+        self.assertEqual([item["id"] for item in queue], ["CVE-2026-0002"])
+        self.assertEqual(excluded, [])
+
+    def test_a_pinned_entry_still_uses_its_version_list(self):
+        """Breadth is a choice per entry: a product declared with versions is still gated by them."""
+        record = cve(
+            "CVE-2026-0003", "apache", "httpd", APACHE_RANGE,
+            bounds={"versionStartIncluding": "2.4.70", "versionEndExcluding": "2.4.80"},
+        )
+        pinned = {"estate": [{"name": "apache httpd", "vendor": "apache",
+                              "product": "httpd", "running": ["2.4.66"]}], "keywords": []}
+        matched, _, detail = load_triage().estate_match(record, pinned, [])
+        self.assertFalse(matched)
+        self.assertIn("no estate product", detail)
 
     def test_a_local_only_bug_is_not_a_front_proxy_problem(self):
         """AV:L means the attacker is already on the host; the proxy changes nothing."""
@@ -213,3 +225,41 @@ class TriageTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class AnyVersion(unittest.TestCase):
+    """An estate entry that declares a product without a version matches any CVE naming it."""
+
+    def setUp(self):
+        """The module under test, imported once per test."""
+        self.triage_module = load_triage()
+
+    def triage(self, estate):
+        """Run the reachable stage against one synthetic CVE and return (matched, via)."""
+        cve = {"id": "CVE-2099-0001", "descriptions": [{"value": "wordpress thing"}],
+               "configurations": [{"nodes": [{"cpeMatch": [{
+                   "vulnerable": True, "criteria": "cpe:2.3:a:wordpress:wordpress:5.0:*:*:*:*:*:*:*"}]}]}]}
+        return self.triage_module.estate_match(cve, {"estate": estate}, [])
+
+    def test_any_version_matches_a_cve_for_a_version_we_do_not_run(self):
+        """The point of the flag: a 5.0 CVE is still a WordPress CVE on a 6.9 site."""
+        matched, via, _ = self.triage([{"name": "wp", "vendor": "wordpress",
+                                        "product": "wordpress", "any_version": True}])
+        self.assertTrue(matched)
+        self.assertEqual(via, "cpe-any-version")
+
+    def test_a_pinned_version_still_has_to_contain_the_running_version(self):
+        """The flag must not weaken the precise entries: a version list still gates the match."""
+        matched, _, detail = self.triage([{"name": "wp", "vendor": "wordpress",
+                                           "product": "wordpress", "running": ["6.9"]}])
+        self.assertFalse(matched)
+        self.assertIn("no estate product", detail)
+
+    def test_a_different_product_is_still_excluded(self):
+        """Breadth is per entry, not global: WordPress declared does not admit Drupal CVEs."""
+        cve = {"id": "CVE-2099-0002", "descriptions": [{"value": "drupal"}],
+               "configurations": [{"nodes": [{"cpeMatch": [{
+                   "vulnerable": True, "criteria": "cpe:2.3:a:drupal:drupal:9.0:*:*:*:*:*:*:*"}]}]}]}
+        matched, _, _ = self.triage_module.estate_match(cve, {"estate": [
+            {"name": "wp", "vendor": "wordpress", "product": "wordpress", "any_version": True}]}, [])
+        self.assertFalse(matched)

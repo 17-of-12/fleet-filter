@@ -1,0 +1,48 @@
+# What counts as "something we could write a signature for".
+#
+# The estate file answers "what do we run". This file answers a different question: "what speaks
+# HTTP in a way a front proxy can refuse". A product can be in one and not the other - Drupal is
+# web-facing and not deployed here, and a signature for it is still worth having, because the
+# deployment a signature protects is not always the deployment we have today.
+#
+# Two ways in, and the output says which one was used:
+#
+#   products   CPE vendor:product. Strong evidence: NVD says this CVE is about this software.
+#   keywords   a phrase in the description, used when the record carries no useful CPE. Weaker -
+#              a description can mention HTTP without the bug being reachable over HTTP - so these
+#              are reported separately and never counted as equal to a CPE match.
+
+products:
+  - apache/httpd
+  - nginx/nginx
+  - lighttpd/lighttpd
+  - microsoft/internet_information_services
+  - drupal/drupal
+  - wordpress/wordpress
+  - joomla/joomla!
+  - php/php
+  - apache/tomcat
+  - eclipse/jetty
+  - nodejs/node.js
+  - expressjs/express
+  - spring/spring_framework
+  - apache/struts
+  - jenkins/jenkins
+  - atlassian/confluence
+  - gitlab/gitlab
+  - nextcloud/nextcloud
+  - moodle/moodle
+  - phpmyadmin/phpmyadmin
+  - haproxy/haproxy
+  - squid/squid
+  - caddy/caddy
+  - traefik/traefik
+
+keywords:
+  - "http request"
+  - "https request"
+  - "http server"
+  - "web server"
+  - "web application"
+  - "reverse proxy"
+  - "request smuggling"
