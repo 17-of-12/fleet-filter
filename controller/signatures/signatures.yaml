@@ -681,11 +681,22 @@ signatures:
     variants:
 
       # The attack surface itself: the fixed URI the CVE exists around, in all three
-      # spellings the vendor's own check set probes. This is the rare signature whose
-      # regex has a single literal prefix that fully describes it (`/core/install.php`, the
-      # gateway's whole detection surface in one string) - unlike the 63030 and 129474
-      # entries there is no alternation to declare and no prefix projection to widen:
-      # the projection and the regex describe the same set.
+      # spellings the vendor's own check set probes. The regex's literal prefix
+      # (/core/install.php) is everything the projection can carry - unlike the 63030 and
+      # 129474 entries there is no alternation to declare, and the projection is that one
+      # string. The projection is WIDER than the regex in the way 129474 states as a cost:
+      # the gateway matches the prefix with starts_with and has no trailing boundary, so
+      # /core/install.phpx and /core/install.php-old are claimed by tier 1 although the
+      # regex rejects them (the victim's Apache AcceptPathInfo runs the same installer for
+      # those URIs - measured 200 'Drupal already installed' - so the wider claim is the
+      # right behaviour for this class, and the tier-2 negatives below state the tier the
+      # boundary belongs to). NARROWER than the app's surface it also documents, in the
+      # 41773 entry's tradition for encoded variants: the matcher folds but decodes nothing
+      # (gateway/src/main.rs, fold_for_matching), so Apache-decoded spellings -
+      # /core/install%2Ephp (measured: the victim serves the installer) and
+      # //core/install.php (Apache merges the slashes before serving) - reach the app
+      # unclaimed; that is the known gap of a fixed-literal rule, not a reason to stop
+      # claiming the spellings the vendor themselves probe.
       # The variant carries no method clause on purpose: the surface is the GET the
       # attacker sends, the HEAD the vendor's `curl -I` check performs, and the POST that
       # submits the reinstall form. 129474 had to state the cost of a method its gateway
@@ -703,8 +714,8 @@ signatures:
             - /core/install.php?langcode=en&profile=standard       # the write-up's own exploit request
             - /core/install.php/foo                                # vendor check 3 (the PATH_INFO spelling their nginx guide demands)
           negative:
-            - /core/install.phpx          # the extension is .php; the prefix projection stops at the same place the regex does
-            - /core/install.php-old
+            - /core/install.phpx          # tier-2 negative (the regex ends at .php); the gateway's prefix match claims it too, and the victim serves the installer there - see the cost stated above
+            - /core/install.php-old       # same shape: tier-2 negative, tier-1 claim, measured served
             - /core/INSTALL.txt           # the readme Apache would also happily serve
             - /install.php                # the root spelling is the variant below, not this one
             - /core/update.php            # update.php is a different exposed script (and SA-CORE-2026-018 / the queued GHSA-qqvx-wc6h-6prm), not the installer

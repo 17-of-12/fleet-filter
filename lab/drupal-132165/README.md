@@ -34,7 +34,7 @@ arguing it, the way `lab/php-129496` measures the fix side of its pair.
 
 | | |
 |---|---|
-| `:8104` vulnerable | `drupal:11.4.12` (in NVD's 11.4.0..11.4.12 range), installed against `drupal_v` |
+| `:8104` vulnerable | `drupal:11.4.12` (the last affected release of the NVD 11.4.0..11.4.13-lessThan range), installed against `drupal_v` |
 | `:8105` patched | `drupal:11.4.13`, installed against `drupal_p` - same image layout, same provisioning path |
 
 ## The provisioning details that are part of the evidence

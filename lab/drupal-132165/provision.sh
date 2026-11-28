@@ -2,7 +2,7 @@
 # provision.sh - build the CVE-2026-132165 victim pair on ff-apache02, exactly as run 2026-11-28.
 #
 # The victim is the vendor's own artifact: the official Docker image `drupal:11.4.12` (the
-# affected 11.4.x release the public write-up tested, inside NVD's 11.4.0..11.4.12 range) plus
+# affected 11.4.x release the public write-up tested, NVD range 11.4.0..11.4.13 lessThan, so 11.4.12 is that range's last affected release) plus
 # its fixed twin `drupal:11.4.13`. No Containerfile: unlike the PHP CVE labs, where the fleet
 # needed ini-level preconditions baked next to the engine image, this CVE's lab state is the
 # official image plus an installed site - and the install leaves marks inside the container, so

@@ -205,7 +205,7 @@
      "ports": [
       8104
      ],
-     "note": "provisioned 2026-11-28 via lab/drupal-132165/provision.sh: the affected 11.4.x release (NVD 11.4.0..11.4.12) installed against drupal_v with drush, the state the CVE attacks (an installed site whose core/install.php still answers). The write-up's exact image+version pairing."
+     "note": "provisioned 2026-11-28 via lab/drupal-132165/provision.sh: the affected 11.4.x release (NVD range 11.4.0..11.4.13 lessThan - the image is that range's last affected release) installed against drupal_v with drush, the state the CVE attacks (an installed site whose core/install.php still answers). The write-up's exact image+version pairing."
     },
     {
      "container": "ff-drupal-132165-patched",
