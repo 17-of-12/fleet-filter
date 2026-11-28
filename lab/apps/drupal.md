@@ -106,6 +106,12 @@ the log file is the only reload evidence (measured again 2026-11-28).
   a class, and an earlier draft of this line called the class `quarantined`. Quote
   the header verbatim instead of the shape you expect - and wait out `map_memo_ttl` (`--settle`) before
   crediting a quarantine to the map.
+- **An empty `raw/` cannot be committed, so do not list it as an artifact.** `bin/lab-session.py`
+  creates `bodies/`, `raw/`, `spool/` and `victim/` in every session dir, but `raw/` only receives
+  files for probes that carry raw bytes (an HTTP/2 preface, a malformed request line). A session of
+  ordinary requests leaves it empty, git drops the empty directory from the commit, and a manifest
+  that names `raw/` then points at nothing in the tree - name what the commit carries, and keep the
+  run's own dir on disk.
 - **Any store edit invalidates every policy hash on the branch, comment-only edits included.** The
   rendered policy stamps `store_sha256:` in its `[detection]` header, so a fix that only touches a
   comment in `controller/signatures/signatures.yaml` still moves the hash of every topology render and
