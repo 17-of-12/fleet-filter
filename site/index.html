@@ -47,7 +47,7 @@ signatures, each tied to a named vulnerability and a recorded demonstration.</p>
       uncovered. Entries whose evidence does not exist are marked, not quietly upgraded.</li>
 </ul>
 
-<h2>Install from the release</h2>
+<h2>Install from source</h2>
 <pre><code>cargo build --release --manifest-path gateway/Cargo.toml
 ./target/release/fleet-filter-gateway --help</code></pre>
 <p>Configuration is a single TOML policy bundle: listener, TLS material, the signature store, the

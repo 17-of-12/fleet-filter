@@ -41,7 +41,10 @@ if not os.path.exists(os.path.join(REPO, "bin", "github-token.py")):
     sys.exit("ops-watch: no bin/github-token.py under %s; set FLEET_FILTER_REPO" % REPO)
 LOG = os.environ.get("FLEET_FILTER_WATCH_LOG", "/var/lib/fleet-filter/ops-watch.log")
 UNITS = ("fleet-filter-cve-triage.timer", "fleet-filter-cve-worker.timer",
-         "fleet-filter-pr-review.timer", "fleet-filter-policy-publish.timer")
+         "fleet-filter-pr-review.timer", "fleet-filter-policy-publish.timer",
+         # install-runtime.sh installs this one too; a watch that checks four of the six timers it
+         # ships cannot report "timers: every unit the loop depends on is active".
+         "fleet-filter-github-audit.timer")
 QUEUE = "/var/lib/fleet-filter/workqueue"
 # A pull request with a green gate and no verdict for longer than this means the review loop is behind
 # or stuck; the session budget is 90 minutes, so two hours is "something is wrong".
